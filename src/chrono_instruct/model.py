@@ -190,9 +190,9 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
     def from_pretrained(cls, repo_id, cache_dir=None, **kwargs):
         config_path = hf_hub_download(repo_id=repo_id, filename="config.pt", cache_dir=cache_dir)
         bin_path = hf_hub_download(repo_id=repo_id, filename="pytorch_model.bin", cache_dir=cache_dir)
-        config = torch.load(config_path, weights_only=False)
+        config = torch.load(config_path, map_location="cpu", weights_only=False)
         model = cls(**config)
-        model.load_state_dict(torch.load(bin_path, weights_only=False))
+        model.load_state_dict(torch.load(bin_path, map_location="cpu", weights_only=False))
         return model
 
 

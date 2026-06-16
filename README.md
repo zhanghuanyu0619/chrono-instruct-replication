@@ -34,6 +34,10 @@ docs/brainstorms/      requirements doc
 
 ## Quickstart
 
+For a GPU box (Lambda H100), see `docs/env-setup.md` for the proven environment
+(stable `cu126` torch, not the upstream nightly) or just run
+`bash scripts/lambda_setup.sh`. Locally:
+
 ```bash
 pip install -e .
 pytest -q                                   # smoke test: no GPU, no download
