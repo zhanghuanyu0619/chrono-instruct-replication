@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.egg-info/
+.venv/
+venv/
+
+# Data, model caches, run outputs — never commit weights
+cache/
+runs/
+logs*/
+*.bin
+*.pt
+configs/_vintage_*.yaml
+
+# OS / editor
+.DS_Store
+.ipynb_checkpoints/

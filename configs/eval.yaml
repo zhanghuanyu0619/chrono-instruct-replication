@@ -1,0 +1,7 @@
+# Evaluation config.
+# president_test runs from the CLI directly (chrono eval --repo ... --cutoff ...).
+# AlpacaEval win-rate is deferred — fill in once the judge harness is wired up.
+alpaca_eval:
+  reference_model: Qwen/Qwen1.5-1.8B-Chat
+  judge: TODO            # LLM-judge model/endpoint for length-controlled win-rate
+  length_controlled: true
