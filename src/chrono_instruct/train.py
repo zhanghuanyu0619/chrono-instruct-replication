@@ -17,10 +17,10 @@ from .data import prepare_stages
 from .tracking import RunLogger
 
 
-def masked_lm_loss(logits, labels):
+def masked_lm_loss(logits, labels, reduction="mean"):
     shift_logits = logits[:, :-1, :].reshape(-1, logits.size(-1))
     shift_labels = labels[:, 1:].reshape(-1)
-    return F.cross_entropy(shift_logits, shift_labels, ignore_index=-100)
+    return F.cross_entropy(shift_logits, shift_labels, ignore_index=-100, reduction=reduction)
 
 
 def cosine_lr(step, total, base_lr, warmup):
@@ -32,16 +32,23 @@ def cosine_lr(step, total, base_lr, warmup):
 
 @torch.no_grad()
 def evaluate(model, loader, device):
+    """Token-weighted mean response loss.
+
+    Sums per-token cross-entropy over all response tokens and divides by the token
+    count — NOT a mean of per-batch means, which is biased when batches hold
+    different numbers of response tokens (e.g. the last batch, or varying mask
+    density). Runs under the same bf16 autocast as training.
+    """
     model.eval()
-    total, n = 0.0, 0
+    total_loss, total_tokens = 0.0, 0
     for ids, labels in loader:
         ids, labels = ids.to(device), labels.to(device)
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
             logits, _ = model(ids)
-        total += masked_lm_loss(logits, labels).item()
-        n += 1
+        total_loss += masked_lm_loss(logits, labels, reduction="sum").item()
+        total_tokens += int((labels[:, 1:] != -100).sum())
     model.train()
-    return total / max(1, n)
+    return total_loss / max(1, total_tokens)
 
 
 def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
