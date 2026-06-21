@@ -1,7 +1,16 @@
-# Evaluation config.
-# president_test runs from the CLI directly (chrono eval --repo ... --cutoff ...).
-# AlpacaEval win-rate is deferred — fill in once the judge harness is wired up.
+# Evaluation reference.
+# Table 2 (president test):  chrono eval --repo <model> --cutoff <year>
+#
+# Figure 3 (AlpacaEval LC win-rate) is a 3-step pipeline:
+#   1. chrono alpaca --backend chrono --repo runs/chrono-instruct-2020/final \
+#        --name chrono-2020 --out out/chrono-2020.json
+#   2. chrono alpaca --backend hf --repo Qwen/Qwen1.5-1.8B-Chat \
+#        --name qwen --out out/qwen.json                 # the reference, generated once
+#   3. chrono winrate --model out/chrono-2020.json --reference out/qwen.json
+#   then collect {year: winrate} into a JSON and: chrono figure --kind 3 --results ...
+#
+# Step 3 calls the canonical `alpaca_eval` package, whose judge needs an
+# annotator key (e.g. OPENAI_API_KEY). Install extras: pip install -e '.[eval]'.
 alpaca_eval:
   reference_model: Qwen/Qwen1.5-1.8B-Chat
-  judge: TODO            # LLM-judge model/endpoint for length-controlled win-rate
   length_controlled: true

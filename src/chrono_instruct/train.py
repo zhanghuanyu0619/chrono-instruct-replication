@@ -14,6 +14,7 @@ from torch.utils.data import DataLoader
 
 from .model import ChronoGPT
 from .data import prepare_stages
+from .tracking import RunLogger
 
 
 def masked_lm_loss(logits, labels):
@@ -43,11 +44,12 @@ def evaluate(model, loader, device):
     return total / max(1, n)
 
 
-def train_stage(model, train_ds, val_ds, cfg, stage, device, logger=print):
+def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
     loader = DataLoader(train_ds, batch_size=cfg["batch_size"], shuffle=True, drop_last=True)
     val_loader = DataLoader(val_ds, batch_size=cfg["batch_size"])
     opt = torch.optim.AdamW(model.parameters(), lr=stage["lr"], weight_decay=cfg.get("weight_decay", 0.0))
 
+    name = stage["name"]
     accum = cfg.get("grad_accum", 1)
     steps_per_epoch = math.ceil(len(loader) / accum)
     total_steps = steps_per_epoch * stage["epochs"]
@@ -67,11 +69,17 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, logger=print):
                 opt.step()
                 opt.zero_grad(set_to_none=True)
                 if step % cfg.get("log_every", 20) == 0:
-                    logger(f"[{stage['name']}] step {step}/{total_steps} loss {loss.item() * accum:.4f}")
+                    train_loss = loss.item() * accum
+                    print(f"[{name}] step {step}/{total_steps} loss {train_loss:.4f}")
+                    if run_logger:
+                        run_logger.log(name, step, "train", train_loss)
                 if cfg.get("save_every") and step > 0 and step % cfg["save_every"] == 0:
-                    model.save_pretrained(os.path.join(cfg["output_dir"], f"{stage['name']}-step{step}"))
+                    model.save_pretrained(os.path.join(cfg["output_dir"], f"{name}-step{step}"))
                 step += 1
-        logger(f"[{stage['name']}] epoch {epoch} val_loss {evaluate(model, val_loader, device):.4f}")
+        val_loss = evaluate(model, val_loader, device)
+        print(f"[{name}] epoch {epoch} val_loss {val_loss:.4f}")
+        if run_logger:
+            run_logger.log(name, step, "val", val_loss)
 
 
 def run(cfg):
@@ -81,10 +89,18 @@ def run(cfg):
     model.train()
 
     # Packed data is filtered + built once and cached, then reused across vintages.
+    logger = RunLogger(cfg["output_dir"], cfg.get("wandb"), run_config=cfg)
     packed = prepare_stages(cfg)
     for stage in cfg["stages"]:
         train_ds, val_ds = packed[stage["name"]]
         print(f"=== {stage['name']}: {len(train_ds)} train blocks, {len(val_ds)} val blocks ===")
-        train_stage(model, train_ds, val_ds, cfg, stage, device)
+        train_stage(model, train_ds, val_ds, cfg, stage, device, logger)
         model.save_pretrained(os.path.join(cfg["output_dir"], stage["name"]))
     model.save_pretrained(os.path.join(cfg["output_dir"], "final"))
+    logger.close()
+
+    push = cfg.get("push_to_hub")
+    if push and push.get("enabled"):
+        from .hub import push_dir
+        push_dir(os.path.join(cfg["output_dir"], "final"), push["repo_id"],
+                 private=push.get("private", True))

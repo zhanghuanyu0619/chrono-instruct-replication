@@ -8,8 +8,11 @@ venv/
 cache/
 runs/
 logs*/
+out/
+wandb/
 *.bin
 *.pt
+*.png
 configs/_vintage_*.yaml
 
 # OS / editor

@@ -20,6 +20,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10"]
+viz = ["matplotlib>=3.7", "wandb>=0.16"]                       # figures + optional W&B
+eval = ["alpaca-eval>=0.6", "transformers>=4.40", "accelerate>=0.30"]  # Figure 3
 
 [project.scripts]
 chrono = "chrono_instruct.cli:main"

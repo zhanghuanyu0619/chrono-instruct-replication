@@ -19,18 +19,24 @@ infrastructure for downstream, lookahead-bias-free prediction work.
 - Config-driven: one run = one vintage on one GPU. Sweep vintages by changing one
   line; fan out across GPUs or SLURM with the scripts in `scripts/`.
 - Unified inference (`generate` / `embed`) for any vintage, base or instruct.
-- Reproduces the president-prediction consistency test (Table 2). AlpacaEval
-  win-rate (Figure 3) is stubbed pending an LLM-judge harness.
+- Reproduces the president-prediction consistency test (Table 2), the SFT loss
+  curves (Figures 1-2, from `metrics.csv`), and the AlpacaEval length-controlled
+  win-rate vs Qwen-1.5-1.8B-Chat (Figure 3, judged by the `alpaca_eval` package).
+- Optional, config-toggled Weights & Biases logging and Hugging Face Hub push.
 
 ## Layout
 
 ```
 src/chrono_instruct/   model.py  data.py  train.py  infer.py  eval.py  cli.py
+                       tracking.py  hub.py  figures.py   # logging / HF push / plots
 configs/               train.yaml  eval.yaml
 scripts/               lambda_setup.sh  launch_local.sh  slurm_array.sbatch
 tests/                 test_smoke.py        # tiny CPU end-to-end, no download
 docs/brainstorms/      requirements doc
 ```
+
+Extras: `pip install -e '.[viz]'` for figures + W&B, `pip install -e '.[eval]'`
+for the AlpacaEval (Figure 3) judge + the Qwen reference model.
 
 ## Quickstart
 
@@ -45,7 +51,15 @@ pytest -q                                   # smoke test: no GPU, no download
 chrono inspect                              # see dataset `source` values + counts
 chrono train  --config configs/train.yaml   # one-vintage curriculum SFT (GPU)
 chrono infer  --repo runs/chrono-instruct-2020/final --mode generate --text "Explain inflation."
-chrono eval   --repo manelalab/chrono-gpt-instruct-v1-20201231 --cutoff 2020
+chrono eval   --repo manelalab/chrono-gpt-instruct-v1-20201231 --cutoff 2020   # Table 2
+```
+
+Figures and publishing (see `configs/eval.yaml` for the full Figure 3 pipeline):
+
+```bash
+chrono figure  --kind 1 --run runs/chrono-instruct-2020          # Fig 1: one run's loss curves
+chrono figure  --kind 2 --runs runs/chrono-instruct-*            # Fig 2: val loss across vintages
+chrono push    --repo runs/chrono-instruct-2020/final --to <user>/chrono-instruct-v1-20201231
 ```
 
 ## Attribution & licenses
