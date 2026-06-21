@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from .model import ChronoGPT
-from .data import load_raw, load_stage
+from .data import prepare_stages
 
 
 def masked_lm_loss(logits, labels):
@@ -80,12 +80,10 @@ def run(cfg):
     model = ChronoGPT.from_pretrained(cfg["model_repo"]).to(device)
     model.train()
 
-    raw = load_raw(cfg["dataset"])
+    # Packed data is filtered + built once and cached, then reused across vintages.
+    packed = prepare_stages(cfg)
     for stage in cfg["stages"]:
-        train_ds, val_ds = load_stage(
-            raw, stage["sources"], cfg["block_size"],
-            cfg.get("val_fraction", 0.05), cfg.get("seed", 123),
-        )
+        train_ds, val_ds = packed[stage["name"]]
         print(f"=== {stage['name']}: {len(train_ds)} train blocks, {len(val_ds)} val blocks ===")
         train_stage(model, train_ds, val_ds, cfg, stage, device)
         model.save_pretrained(os.path.join(cfg["output_dir"], stage["name"]))

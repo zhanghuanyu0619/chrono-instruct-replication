@@ -1,9 +1,17 @@
 # One vintage, one run. Change `model_repo` (and output_dir) to sweep vintages.
 # Stage `sources` are matched as case-insensitive substrings against the dataset's
 # `source` column — run `chrono inspect` first to see the exact values and counts.
+#
+# Temporal screen (paper s2.2.1): keep only pairs the GPT-4.1 classifier labels
+# 0 ("pre-2000") with confidence 10. This is a SINGLE conservative screen, not
+# per-vintage: pre-2000 data is pre-tau for every vintage tau >= 1999, so the
+# filtered+packed corpus is built once (cache_dir) and reused across all vintages.
+# The screen drops the release from 647,944 rows to the paper's ~425,119.
 model_repo: manelalab/chrono-gpt-v1-20201231
 dataset: manelalab/ChronoInstruct-SFT
 output_dir: runs/chrono-instruct-2020
+cache_dir: cache            # packed blocks cached here; shared across vintage runs
+min_confidence: 10          # confidence gate for label-0 retention (set null to skip)
 
 block_size: 1792
 seed: 123

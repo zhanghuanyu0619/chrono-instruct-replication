@@ -1,12 +1,23 @@
-"""Data: load ChronoInstruct-SFT, reconstruct curriculum stages, format + pack.
+"""Data: load ChronoInstruct-SFT, filter, reconstruct curriculum stages, pack.
 
-The released dataset has columns `conversation {instruction, input, output}`,
-`label`, and `source`. The 3-stage curriculum is reconstructed by grouping on
-`source` (matched as a case-insensitive substring so we don't depend on the
-exact label strings). Each example is rendered with the Alpaca template; the
-loss is masked to the response span only. Examples are packed into fixed-length
-blocks because the model has no padding-mask support.
+The released dataset has three columns:
+  - `conversation`: a JSON object {instruction, input, output} (arrives as a
+    dict or as a JSON string depending on the loader; we handle both).
+  - `label`: the GPT-4.1 temporal-screen verdict. The paper keeps only pairs
+    classified label 0 ("knowledge available pre-2000") with confidence 10.
+  - `source`: which of the three upstreams the pair came from.
+
+The temporal screen is a single conservative pre-2000 filter applied ONCE, not
+per vintage: pre-2000 data is pre-tau for every vintage tau >= 1999, so one
+filtered corpus is reused across all vintage runs (see `prepare_stages`). The
+3-stage curriculum is reconstructed by grouping the filtered rows on `source`.
+Each example is rendered Alpaca-style and the loss is masked to the response
+span only; examples are packed into fixed-length blocks (the model has no
+padding-mask support).
 """
+import hashlib
+import json
+import os
 from dataclasses import dataclass
 
 import torch
@@ -28,6 +39,8 @@ PROMPT_NO_INPUT = (
 
 
 def format_example(conv):
+    if isinstance(conv, str):  # released `conversation` may be a JSON string
+        conv = json.loads(conv)
     instruction = (conv.get("instruction") or "").strip()
     inp = (conv.get("input") or "").strip()
     output = (conv.get("output") or "").strip()
@@ -43,6 +56,26 @@ def encode_example(conv):
     ids = p_ids + r_ids
     mask = [False] * len(p_ids) + [True] * len(r_ids)
     return ids, mask
+
+
+def keep_row(row, min_confidence=10):
+    """Temporal screen: keep pairs the GPT-4.1 classifier marked pre-2000.
+
+    Paper s2.2.1 keeps label 0 with confidence 10. The `label` field holds the
+    classifier's JSON verdict (a dict, or a JSON string); anything unparseable is
+    dropped (the paper's "ambiguity -> label 1" stance). Run `chrono inspect` to
+    confirm the field's shape before trusting the resulting counts.
+    """
+    label = row.get("label")
+    if isinstance(label, str):
+        try:
+            label = json.loads(label)
+        except json.JSONDecodeError:
+            return False
+    if not isinstance(label, dict) or label.get("label") != 0:
+        return False
+    conf = label.get("confidence")
+    return min_confidence is None or conf is None or conf >= min_confidence
 
 
 def stage_examples(dataset, sources):
@@ -103,10 +136,51 @@ def load_raw(dataset_name):
     return load_dataset(dataset_name, split="train")
 
 
-def source_counts(dataset):
-    """Inspect helper: unique `source` values and their row counts."""
+def source_counts(dataset, after_filter=False, min_confidence=10):
+    """Inspect helper: unique `source` values and their row counts.
+
+    With after_filter=True, count only rows passing the temporal screen.
+    """
     counts = {}
     for row in dataset:
+        if after_filter and not keep_row(row, min_confidence):
+            continue
         src = row.get("source") or "<none>"
         counts[src] = counts.get(src, 0) + 1
     return counts
+
+
+def _cache_key(cfg):
+    payload = {
+        "dataset": cfg["dataset"],
+        "block_size": cfg["block_size"],
+        "val_fraction": cfg.get("val_fraction", 0.05),
+        "seed": cfg.get("seed", 123),
+        "min_confidence": cfg.get("min_confidence", 10),
+        "stages": [[s["name"], s["sources"]] for s in cfg["stages"]],
+    }
+    return hashlib.sha1(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
+
+
+def prepare_stages(cfg):
+    """Build (or load from cache) packed train/val blocks, keyed by stage name.
+
+    Only the tokenized data is cached — never the model or hyperparameters like
+    lr/epochs (those stay live from the config). The data depends solely on
+    (dataset, screen, block_size, stages, seed), so it is built once and reused
+    across every vintage run. Returns {stage_name: (train_ds, val_ds)}.
+    """
+    cache_dir = cfg.get("cache_dir", "cache")
+    path = os.path.join(cache_dir, f"packed-{_cache_key(cfg)}.pt")
+    if os.path.exists(path):
+        return torch.load(path, weights_only=False)
+
+    rows = [r for r in load_raw(cfg["dataset"]) if keep_row(r, cfg.get("min_confidence", 10))]
+    stages = {
+        s["name"]: load_stage(rows, s["sources"], cfg["block_size"],
+                              cfg.get("val_fraction", 0.05), cfg.get("seed", 123))
+        for s in cfg["stages"]
+    }
+    os.makedirs(cache_dir, exist_ok=True)
+    torch.save(stages, path)
+    return stages

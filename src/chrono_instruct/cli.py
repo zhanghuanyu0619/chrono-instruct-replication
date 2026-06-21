@@ -39,11 +39,22 @@ def main(argv=None):
 
     if args.cmd == "inspect":
         from .data import load_raw, source_counts
-        counts = source_counts(load_raw(args.dataset))
-        total = sum(counts.values())
-        for src, n in sorted(counts.items(), key=lambda kv: -kv[1]):
-            print(f"{n:>9,}  {src}")
-        print(f"{total:>9,}  TOTAL")
+
+        def _print(counts, footer=""):
+            for src, n in sorted(counts.items(), key=lambda kv: -kv[1]):
+                print(f"{n:>9,}  {src}")
+            print(f"{sum(counts.values()):>9,}  TOTAL{footer}")
+
+        ds = load_raw(args.dataset)
+        sample = next(iter(ds))
+        print("=== sample row (verify column shapes) ===")
+        print("conversation:", repr(sample.get("conversation"))[:300])
+        print("label:", repr(sample.get("label")))
+        print("source:", repr(sample.get("source")))
+        print("\n=== source counts (raw) ===")
+        _print(source_counts(ds))
+        print("\n=== source counts (after label==0 & confidence>=10 screen) ===")
+        _print(source_counts(ds, after_filter=True), "  (paper Table 1: 425,119)")
 
     elif args.cmd == "train":
         from .train import run
