@@ -45,7 +45,8 @@ def evaluate(model, loader, device):
 
 
 def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
-    loader = DataLoader(train_ds, batch_size=cfg["batch_size"], shuffle=True, drop_last=True)
+    g = torch.Generator().manual_seed(cfg["seed"])  # global seed -> deterministic shuffle
+    loader = DataLoader(train_ds, batch_size=cfg["batch_size"], shuffle=True, drop_last=True, generator=g)
     val_loader = DataLoader(val_ds, batch_size=cfg["batch_size"])
     opt = torch.optim.AdamW(model.parameters(), lr=stage["lr"], weight_decay=cfg.get("weight_decay", 0.0))
 
@@ -83,7 +84,8 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
 
 
 def run(cfg):
-    torch.manual_seed(cfg.get("seed", 123))
+    cfg.setdefault("seed", 123)  # single global seed: data split, shuffle, sampling all derive from it
+    torch.manual_seed(cfg["seed"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ChronoGPT.from_pretrained(cfg["model_repo"]).to(device)
     model.train()

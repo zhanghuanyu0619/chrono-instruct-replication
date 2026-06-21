@@ -14,7 +14,7 @@ cache_dir: cache            # packed blocks cached here; shared across vintage r
 min_confidence: 10          # confidence gate for label-0 retention (set null to skip)
 
 block_size: 1792
-seed: 123
+seed: 123                    # single global seed: train/val split, shuffle, and sampling all derive from it
 
 batch_size: 8
 grad_accum: 4
