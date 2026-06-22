@@ -59,7 +59,7 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
 
     name = stage["name"]
     accum = cfg.get("grad_accum", 1)
-    steps_per_epoch = math.ceil(len(loader) / accum)
+    steps_per_epoch = len(loader) // accum  # only full accum groups step; floor matches reality
     total_steps = steps_per_epoch * stage["epochs"]
     warmup = int(total_steps * cfg.get("warmup_ratio", 0.03))
 
@@ -72,8 +72,8 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
                 loss = masked_lm_loss(logits, labels) / accum
             loss.backward()
             if (i + 1) % accum == 0:
-                for g in opt.param_groups:
-                    g["lr"] = cosine_lr(step, total_steps, stage["lr"], warmup)
+                for group in opt.param_groups:
+                    group["lr"] = cosine_lr(step, total_steps, stage["lr"], warmup)
                 opt.step()
                 opt.zero_grad(set_to_none=True)
                 if step % cfg.get("log_every", 20) == 0:
@@ -84,6 +84,7 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
                 if cfg.get("save_every") and step > 0 and step % cfg["save_every"] == 0:
                     model.save_pretrained(os.path.join(cfg["output_dir"], f"{name}-step{step}"))
                 step += 1
+        opt.zero_grad(set_to_none=True)  # drop any partial accum group so its grads can't leak into the next epoch
         val_loss = evaluate(model, val_loader, device)
         print(f"[{name}] epoch {epoch} val_loss {val_loss:.4f}")
         if run_logger:
