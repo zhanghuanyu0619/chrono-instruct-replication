@@ -15,6 +15,11 @@ wandb/
 *.png
 configs/_vintage_*.yaml
 
+# published results ARE tracked (small: loss logs + figures); weights never are
+!results/
+!results/**/*.png
+!results/**/*.csv
+
 # OS / editor
 .DS_Store
 .ipynb_checkpoints/

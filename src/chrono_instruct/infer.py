@@ -20,6 +20,16 @@ def load(repo_id, device=None, cache_dir="cache"):
     return model, device
 
 
+def free_memory():
+    """Release cached GPU memory. Call AFTER `del`-ing your model/tensor refs,
+    e.g. `del model; free_memory()` — useful between loading different vintages."""
+    import gc
+
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 @torch.no_grad()
 def generate(model, device, prompt, max_new_tokens=128, top_k=50, temperature=1.0, seed=123):
     ids = torch.tensor(ENC.encode(prompt), dtype=torch.long, device=device).unsqueeze(0)

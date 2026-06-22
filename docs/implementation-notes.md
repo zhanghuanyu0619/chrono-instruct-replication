@@ -24,14 +24,14 @@ line (paper p.7 example, and `ChronoGPT_instruct.py:extract_response`).
   (`PROMPT_WITH_INPUT` / `PROMPT_NO_INPUT`) is the Alpaca convention — rows with
   an empty `input` field use the no-input template. The released data has both.
 
-**Pending decision:** the released instruct model's `extract_response` uses a
-*different* arrangement — the "Below is an instruction…" preamble lives **inside**
-`### Instruction:` as a system prompt, and `### Input:` is **always** emitted
-(empty or not, removing the no-input branch). Code is ground truth over the paper
-figure, and matching it makes our models drop-in compatible with the authors'
-tooling. Open question: adopt `extract_response` as the single prompt format for
-both training (`data.py`) and inference (`infer.py`, `eval.py`)? See verify
-notebook §12 for a side-by-side output comparison before deciding.
+**Resolved (June 2026, notebook §12): keep the Alpaca template.** We A/B-tested
+our Alpaca template against the released model's `extract_response` format (system
+prompt inside `### Instruction:`, always-present `### Input:`) on the same instruct
+vintage. Our Alpaca template produced a coherent answer; `extract_response`
+produced **degenerate garbage**. So we do NOT switch — `data.py`/`infer.py`/
+`eval.py` stay on the Alpaca format. (Our model is also bit-identical to the
+official one — notebook §10, max logit diff 0.0 — so this is a format effect, not
+a weights issue.)
 
 ## 2. Loss on the response only (response masking) · Settled
 
@@ -58,8 +58,14 @@ GPT-4.1 classifier marked `label 0` ("pre-2000") with `confidence 10`
 - Consequence: the filtered + packed corpus is **model-independent**, so it is
   built once and cached (`prepare_stages`, keyed on data not model) and reused by
   every vintage run — only `model_repo` varies.
-- **Verify:** confirm the `label` field's exact shape and that the post-screen
-  total ≈ 425,119 with per-stage counts 1,097 / 67,136 / 356,886 (notebook §4).
+- **Verified on box (June 2026):** the `label` field is stored **inconsistently** —
+  scratch and self-instruct use valid JSON (`'{"label": 0, ...}'`), but Tulu rows
+  use single-quoted Python-dict reprs (`"{'label': 0, ...}"`). The original
+  `json.loads`-only parser silently dropped every Tulu row, collapsing it to ~32k
+  vs the paper's ~357k (scratch 1,097 and self-instruct 67,136 matched exactly,
+  which is what isolated the bug to parsing, not the confidence threshold).
+  **Fix:** `_parse_label` now falls back to `ast.literal_eval`, so all three
+  stages screen on their real verdict. This was the cause of the 100k-vs-425k gap.
 
 ## 4. Packing into fixed blocks — chosen because the model has no padding mask · Settled mechanism, Pending refinement
 
@@ -84,8 +90,11 @@ sequence).
   splits — start a new block when the next example won't fit, pad the remainder
   with loss-masked `EOT`, and truncate examples longer than `block_size`
   (unavoidable at this context length). Removes cost #1, keeps efficiency.
-- **Verify:** quantify the % of examples > 1792 per stage on real data
-  (notebook §7) before deciding whether the refinement is worth it.
+- **Verified (June 2026, notebook §7): low priority.** Only **5.1% of Tulu**
+  examples exceed 1792 (stages 1–2: 0%); Tulu mean length is 704 tokens (a few
+  long outliers, max 44,808). So simple packing splits ~5% of Stage-3 examples —
+  acceptable. We keep simple packing; the no-split refinement is deferred unless
+  Fig 1/2 show artifacts.
 
 ## 5. No `[pad]` token — it's a property of GPT-2 / tiktoken, not a bug · Settled
 
@@ -120,9 +129,12 @@ return — the instruct file comments out `layer_outputs`, but we need it for
 ## 7. Full fine-tuning, no PEFT · Settled
 
 All 1.55B parameters are updated (`AdamW(model.parameters())`). The paper does
-full SFT ("standard masked cross-entropy"); no LoRA/adapters mentioned. A 1.55B
-model trains fully on one 80GB H100 with room to spare, so PEFT buys nothing here.
-- **Verify:** one real backward step + peak VRAM on the box (notebook §13).
+full SFT ("standard masked cross-entropy"); no LoRA/adapters mentioned.
+- **Verified (June 2026, notebook §13): full FT needs ≥80GB.** On a 40GB A100 it
+  **OOMs even at batch 1** (~37GB of activations+params in the forward alone — the
+  retained `layer_outputs` and the 52-layer autograd graph at 1792 tokens are
+  costly). Remedies if stuck on 40GB: gradient checkpointing, not retaining
+  `layer_outputs` during training, or 8-bit Adam. We proceed on an 80GB card.
 
 ## 8. Reproducibility — one global seed · Settled
 
@@ -158,8 +170,12 @@ disk is wiped on instance termination. Weights are git-ignored (`*.bin`, `*.pt`,
 
 ---
 
-## Open decisions awaiting your call
-1. **Prompt format** (§1): keep Alpaca templates, or switch everything to the
-   official `extract_response` format? (notebook §12 informs this)
-2. **Packing** (§4): keep simple packing, or switch to no-mid-example-split
-   packing? (notebook §7 informs this)
+## Decisions — all resolved by the June 2026 box verification
+1. **Prompt format** (§1): **keep Alpaca** — `extract_response` produced garbage (§12).
+2. **Packing** (§4): **keep simple packing** — only 5.1% of Tulu splits (§7).
+3. **Label parsing** (§3): **fixed** — `ast` fallback recovers Tulu to 356,886;
+   all three stages now match the paper (total 425,119). `min_confidence: 10` stays.
+4. **Compute** (§7): **needs ≥80GB** for full FT; 40GB OOMs at batch 1.
+
+Remaining to confirm: param dtype (notebook §9 — add `next(model.parameters()).dtype`);
+expected fp32, which is correct for AdamW. Not blocking.

@@ -15,6 +15,7 @@ Each example is rendered Alpaca-style and the loss is masked to the response
 span only; examples are packed into fixed-length blocks (the model has no
 padding-mask support).
 """
+import ast
 import hashlib
 import json
 import os
@@ -58,23 +59,42 @@ def encode_example(conv):
     return ids, mask
 
 
+def _parse_label(label):
+    """Parse the `label` verdict, tolerant of JSON *and* Python-dict-repr strings.
+
+    The GPT-4.1 verdict is stored inconsistently across sources (verified on the
+    box): scratch and self-instruct use valid JSON ('{"label": 0, ...}'), but
+    Tulu rows use single-quoted Python-dict reprs ("{'label': 0, ...}") that
+    json.loads rejects. Falling back to ast.literal_eval means those rows get
+    screened on their real verdict instead of being silently dropped — which was
+    the cause of Tulu collapsing to ~32k vs the paper's ~357k. Returns a dict, or
+    None if the verdict is genuinely unrecoverable.
+    """
+    if isinstance(label, dict):
+        return label
+    if not isinstance(label, str):
+        return None
+    for parse in (json.loads, ast.literal_eval):
+        try:
+            obj = parse(label)
+            if isinstance(obj, dict):
+                return obj
+        except Exception:
+            continue
+    return None
+
+
 def keep_row(row, min_confidence=10):
     """Temporal screen: keep pairs the GPT-4.1 classifier marked pre-2000.
 
-    Paper s2.2.1 keeps label 0 with confidence 10. The `label` field holds the
-    classifier's JSON verdict (a dict, or a JSON string); anything unparseable is
-    dropped (the paper's "ambiguity -> label 1" stance). Run `chrono inspect` to
-    confirm the field's shape before trusting the resulting counts.
+    Paper s2.2.1 keeps label 0 with confidence 10. Verdicts that can't be parsed
+    are dropped (the paper's "ambiguity -> label 1" stance). Set `min_confidence`
+    to null in the config to keep every label-0 row regardless of confidence.
     """
-    label = row.get("label")
-    if isinstance(label, str):
-        try:
-            label = json.loads(label)
-        except json.JSONDecodeError:
-            return False
-    if not isinstance(label, dict) or label.get("label") != 0:
+    obj = _parse_label(row.get("label"))
+    if obj is None or obj.get("label") != 0:
         return False
-    conf = label.get("confidence")
+    conf = obj.get("confidence")
     return min_confidence is None or conf is None or conf >= min_confidence
 
 
