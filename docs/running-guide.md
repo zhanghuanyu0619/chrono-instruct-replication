@@ -48,8 +48,16 @@ The token is cached under `$HF_HOME` (on the persistent FS). Never hardcode it.
 
 ```bash
 pytest -q                                    # CPU smoke test, ~5s
-jupyter lab notebooks/verify_pipeline.ipynb  # run top to bottom; see §-by-§ checks
+
+# Register THIS venv as a Jupyter kernel (once) so the notebook sees chrono_instruct/torch
+pip install jupyterlab ipykernel
+python -m ipykernel install --user --name chrono --display-name "Python (chrono)"
+
+jupyter lab notebooks/verify_pipeline.ipynb  # then pick kernel "Python (chrono)"; run top to bottom
 ```
+In JupyterLab, select the **Python (chrono)** kernel (top-right, or Kernel → Change
+Kernel) before running — the default kernel won't have the venv's packages.
+
 Confirm in the notebook: screen total ≈ 425,119 (§4/§4b), param dtype (§9),
 logit parity ≈ 0 vs the official file (§10), and peak VRAM (§13).
 
