@@ -1,8 +1,9 @@
 # Running Guide — Lambda Labs, end to end
 
 Full workflow for one vintage: provision → setup → verify → train → figures →
-publish results to GitHub → push checkpoints to Hugging Face → inference. Assumes
-the proven environment in `env-setup.md` (stable `cu126` torch, Python 3.10).
+publish results to GitHub → push checkpoints to Hugging Face → inference. §2 sets
+up the environment via `scripts/lambda_setup.sh`; `env-setup.md` is the background
+runbook explaining *why* (stable `cu126` torch, not the upstream nightly).
 
 > **Division of artifacts:** loss logs + figures go to **GitHub** (small, in
 > `results/`); model checkpoints go to the **Hugging Face Hub** (large). Weights
@@ -22,19 +23,26 @@ must live on the persistent mount.
 
 ## 2. One-time setup
 
+**Start tmux FIRST**, then do everything inside it — so the venv activation and
+env vars live in the persistent session (a dropped SSH connection won't kill a
+multi-hour run, and re-attaching keeps the venv active):
+```bash
+tmux new -s chrono     # detach: Ctrl-b d   |   reattach: tmux attach -t chrono
+```
+
+Then, **inside tmux**:
 ```bash
 git clone https://github.com/zhanghuanyu0619/chrono-instruct-replication.git
 cd chrono-instruct-replication
 export PERSIST=/home/ubuntu/persist
 bash scripts/lambda_setup.sh                 # stable cu126 torch + deps, HF cache on $PERSIST
-source $PERSIST/venv/bin/activate            # NOTE: literal path; $PERSIST must be exported
+source $PERSIST/venv/bin/activate            # literal path; $PERSIST must be exported in THIS shell
 pip install -e '.[dev,viz,eval]'             # tests, figures/W&B, AlpacaEval
+pip install jupyterlab ipykernel             # for the verification notebook — INTO the venv
 ```
 
-Work inside **tmux** so a dropped SSH connection doesn't kill a multi-hour run:
-```bash
-tmux new -s chrono     # detach: Ctrl-b d   |   reattach: tmux attach -t chrono
-```
+> Do NOT activate the venv *before* `tmux new` — a fresh tmux shell won't inherit
+> it. Activate inside tmux (as above); after `tmux attach` the activation persists.
 
 ## 3. Authenticate with Hugging Face
 
@@ -49,14 +57,18 @@ The token is cached under `$HF_HOME` (on the persistent FS). Never hardcode it.
 ```bash
 pytest -q                                    # CPU smoke test, ~5s
 
-# Register THIS venv as a Jupyter kernel (once) so the notebook sees chrono_instruct/torch
-pip install jupyterlab ipykernel
+# Register the venv as a Jupyter kernel (jupyterlab + ipykernel installed in §2).
+# --user makes it visible to ANY JupyterLab, including Lambda's hosted one.
 python -m ipykernel install --user --name chrono --display-name "Python (chrono)"
-
-jupyter lab notebooks/verify_pipeline.ipynb  # then pick kernel "Python (chrono)"; run top to bottom
+jupyter lab notebooks/verify_pipeline.ipynb  # or use Lambda's hosted JupyterLab
 ```
-In JupyterLab, select the **Python (chrono)** kernel (top-right, or Kernel → Change
-Kernel) before running — the default kernel won't have the venv's packages.
+Select the **Python (chrono)** kernel (top-right / Kernel → Change Kernel) before
+running. Verify you're on the right one with a quick cell:
+```python
+import sys; print(sys.executable)            # must be /home/ubuntu/persist/venv/bin/python
+```
+If it shows a different path (or `tiktoken` ImportError), the kernel points at the
+wrong Python — re-run the `ipykernel install` line above *with the venv active*.
 
 Confirm in the notebook: screen total ≈ 425,119 (§4/§4b), param dtype (§9),
 logit parity ≈ 0 vs the official file (§10), and peak VRAM (§13).
@@ -140,6 +152,11 @@ so only `model_repo`/`output_dir` change. Fan out with `scripts/launch_local.sh`
 (one vintage per GPU) or `scripts/slurm_array.sbatch` (SLURM array).
 
 ## Gotchas
+- **tmux loses your venv:** activate the venv *inside* tmux, not before — a fresh
+  tmux shell doesn't inherit activation. Symptom: `No module named ipykernel` /
+  wrong-Python kernel / `tiktoken` not found.
+- **Wrong notebook kernel:** if `sys.executable` isn't the venv path, re-run
+  `python -m ipykernel install --user --name chrono` with the venv active.
 - **Ephemeral disk:** keep `output_dir`, `$HF_HOME`, and the venv on `$PERSIST`.
 - **`$PERSIST` not set:** `source $PERSIST/...` fails silently if it expanded to
   empty — `export PERSIST=...` first, or use the literal path.
