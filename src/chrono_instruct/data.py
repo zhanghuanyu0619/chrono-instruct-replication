@@ -193,14 +193,20 @@ def prepare_stages(cfg):
     cache_dir = cfg.get("cache_dir", "cache")
     path = os.path.join(cache_dir, f"packed-{_cache_key(cfg)}.pt")
     if os.path.exists(path):
+        print(f"[data] loading cached packed blocks: {path}")
         return torch.load(path, weights_only=False)
 
+    print(f"[data] building packed cache (one-time, ~10-20 min on first full run) -> {path}")
+    print("[data] loading dataset + applying temporal screen ...")
     rows = [r for r in load_raw(cfg["dataset"]) if keep_row(r, cfg.get("min_confidence", 10))]
-    stages = {
-        s["name"]: load_stage(rows, s["sources"], cfg["block_size"],
-                              cfg.get("val_fraction", 0.05), cfg.get("seed", 123))
-        for s in cfg["stages"]
-    }
+    print(f"[data] {len(rows):,} rows kept; tokenizing + packing stages ...")
+    stages = {}
+    for s in cfg["stages"]:
+        train_ds, val_ds = load_stage(rows, s["sources"], cfg["block_size"],
+                                      cfg.get("val_fraction", 0.05), cfg.get("seed", 123))
+        print(f"[data]   {s['name']}: {len(train_ds):,} train + {len(val_ds):,} val blocks")
+        stages[s["name"]] = (train_ds, val_ds)
     os.makedirs(cache_dir, exist_ok=True)
     torch.save(stages, path)
+    print(f"[data] cache saved: {path}")
     return stages
