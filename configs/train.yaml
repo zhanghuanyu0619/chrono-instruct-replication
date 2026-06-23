@@ -34,8 +34,8 @@ wandb:
   name: null                # defaults to the output_dir basename
 push_to_hub:
   enabled: false            # push output_dir/final to the Hub when training ends
-  repo_id: zhanghuanyu0619/chrono-instruct-v1-20201231
-  private: true             # needs a write token (hf auth login / HF_TOKEN)
+  repo_id: HZ0619/chrono-instruct-v1-20201231   # must be your HF namespace (hf auth whoami), NOT GitHub
+  private: true             # needs a WRITE token (hf auth login / HF_TOKEN)
 
 # Curriculum, trained in order; each stage continues from the previous weights.
 # LR / epochs are an initial guess to be tuned against the paper's Figure 1 curves.

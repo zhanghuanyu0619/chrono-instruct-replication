@@ -123,10 +123,11 @@ bash scripts/publish_results.sh /home/ubuntu/persist/runs/chrono-instruct-2020 c
 ```
 This copies `metrics.csv`, renders `results/chrono-instruct-2020/figure1.png`, and pushes.
 
-**Checkpoints → Hugging Face Hub** (large weights):
+**Checkpoints → Hugging Face Hub** (large weights). `<hf-user>` must be your HF
+namespace from `hf auth whoami` (NOT your GitHub username), with a **Write** token:
 ```bash
 chrono push --repo /home/ubuntu/persist/runs/chrono-instruct-2020/final \
-            --to <your-user>/chrono-instruct-v1-20201231 --private
+            --to <hf-user>/chrono-instruct-v1-20201231 --private
 ```
 (or set `push_to_hub.enabled: true` in the config to do this automatically at the
 end of training.)
