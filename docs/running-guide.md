@@ -152,6 +152,12 @@ so only `model_repo`/`output_dir` change. Fan out with `scripts/launch_local.sh`
 (one vintage per GPU) or `scripts/slurm_array.sbatch` (SLURM array).
 
 ## Gotchas
+- **Shut down notebook kernels before training:** a live JupyterLab kernel keeps
+  its models on the GPU (tens of GB), so `chrono train` then OOMs even on an 80GB
+  card. `nvidia-smi` to spot the stale PID; Kernel → Shut Down All, or `kill <pid>`.
+- **`batch_size` on one card:** full FT of 1.55B is memory-heavy; if you OOM on a
+  clean 80GB card, lower `batch_size` and raise `grad_accum` to keep the effective
+  batch (e.g. `2`/`16` = 32). Watch `nvidia-smi` for the real peak.
 - **tmux loses your venv:** activate the venv *inside* tmux, not before — a fresh
   tmux shell doesn't inherit activation. Symptom: `No module named ipykernel` /
   wrong-Python kernel / `tiktoken` not found.
