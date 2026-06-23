@@ -7,9 +7,11 @@ cluster fan-out is handled outside this file (see scripts/), never here.
 """
 import math
 import os
+import time
 
 import torch
 import torch.nn.functional as F
+import yaml
 from torch.utils.data import DataLoader
 
 from .model import ChronoGPT
@@ -59,11 +61,16 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
 
     name = stage["name"]
     accum = cfg.get("grad_accum", 1)
-    steps_per_epoch = len(loader) // accum  # only full accum groups step; floor matches reality
+    log_every = cfg.get("log_every", 20)
+    grad_clip = cfg.get("grad_clip")          # None -> no clipping (norm still logged)
+    tokens_per_step = cfg["batch_size"] * cfg["block_size"] * accum
+    steps_per_epoch = len(loader) // accum    # only full accum groups step; floor matches reality
     total_steps = steps_per_epoch * stage["epochs"]
     warmup = int(total_steps * cfg.get("warmup_ratio", 0.03))
 
     step = 0
+    last_t, last_step = time.time(), 0
+    val_loss = float("nan")
     for epoch in range(stage["epochs"]):
         for i, (ids, labels) in enumerate(loader):
             ids, labels = ids.to(device), labels.to(device)
@@ -72,15 +79,24 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
                 loss = masked_lm_loss(logits, labels) / accum
             loss.backward()
             if (i + 1) % accum == 0:
+                grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip or 1e30)
+                lr = cosine_lr(step, total_steps, stage["lr"], warmup)
                 for group in opt.param_groups:
-                    group["lr"] = cosine_lr(step, total_steps, stage["lr"], warmup)
+                    group["lr"] = lr
                 opt.step()
                 opt.zero_grad(set_to_none=True)
-                if step % cfg.get("log_every", 20) == 0:
+                if step % log_every == 0:
+                    now = time.time()
+                    tps = (step - last_step or 1) * tokens_per_step / (now - last_t)
+                    last_t, last_step = now, step
                     train_loss = loss.item() * accum
-                    print(f"[{name}] step {step}/{total_steps} loss {train_loss:.4f}")
+                    mem = torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0
+                    print(f"[{name}] step {step}/{total_steps} loss {train_loss:.4f} "
+                          f"lr {lr:.2e} |g| {float(grad_norm):.2f} {tps:,.0f} tok/s {mem:.1f}GB")
                     if run_logger:
-                        run_logger.log(name, step, "train", train_loss)
+                        run_logger.log(stage=name, epoch=epoch, step=step, split="train",
+                                       loss=round(train_loss, 4), lr=lr, grad_norm=round(float(grad_norm), 3),
+                                       tokens_per_sec=round(tps), gpu_mem_gb=round(mem, 1))
                 if cfg.get("save_every") and step > 0 and step % cfg["save_every"] == 0:
                     model.save_pretrained(os.path.join(cfg["output_dir"], f"{name}-step{step}"))
                 step += 1
@@ -88,7 +104,9 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
         val_loss = evaluate(model, val_loader, device)
         print(f"[{name}] epoch {epoch} val_loss {val_loss:.4f}")
         if run_logger:
-            run_logger.log(name, step, "val", val_loss)
+            run_logger.log(stage=name, epoch=epoch, step=step, split="val",
+                           loss=round(val_loss, 4), ppl=round(math.exp(min(val_loss, 20)), 2))
+    return val_loss
 
 
 def run(cfg):
@@ -101,13 +119,26 @@ def run(cfg):
 
     # Packed data is filtered + built once and cached, then reused across vintages.
     logger = RunLogger(cfg["output_dir"], cfg.get("wandb"), run_config=cfg)
+    with open(os.path.join(cfg["output_dir"], "config.yaml"), "w") as f:
+        yaml.safe_dump(cfg, f, sort_keys=False)  # snapshot the resolved config for reproducibility
+
     packed = prepare_stages(cfg)
+    final_val = {}
     for stage in cfg["stages"]:
         train_ds, val_ds = packed[stage["name"]]
         print(f"=== {stage['name']}: {len(train_ds)} train blocks, {len(val_ds)} val blocks ===")
-        train_stage(model, train_ds, val_ds, cfg, stage, device, logger)
+        final_val[stage["name"]] = round(train_stage(model, train_ds, val_ds, cfg, stage, device, logger), 4)
         model.save_pretrained(os.path.join(cfg["output_dir"], stage["name"]))
     model.save_pretrained(os.path.join(cfg["output_dir"], "final"))
+
+    logger.summary(
+        model_repo=cfg["model_repo"],
+        final_val_loss=final_val,
+        peak_gpu_gb=round(torch.cuda.max_memory_allocated() / 1e9, 1) if torch.cuda.is_available() else None,
+        seed=cfg["seed"], block_size=cfg["block_size"],
+        batch_size=cfg["batch_size"], grad_accum=cfg["grad_accum"],
+        grad_checkpoint=model.grad_checkpoint,
+    )
     logger.close()
 
     push = cfg.get("push_to_hub")

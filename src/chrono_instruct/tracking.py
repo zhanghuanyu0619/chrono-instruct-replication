@@ -1,18 +1,32 @@
-"""Training metrics: always written to CSV, optionally mirrored to Weights & Biases.
+"""Training metrics: a rich CSV (always) optionally mirrored to Weights & Biases.
 
-The CSV (output_dir/metrics.csv) is the source of truth for Figures 1-2 and needs
-no account. W&B is an optional live mirror, off unless `wandb.enabled` is set in
-the config. Both are deliberately decoupled so figures never depend on W&B.
+`output_dir/metrics.csv` is the source of truth for the figures and needs no
+account. Each row is one event (a train log point or an epoch's val), with
+nullable columns so train/val rows can carry different fields:
+
+    elapsed_s, stage, epoch, step, split, loss, ppl, lr, grad_norm,
+    tokens_per_sec, gpu_mem_gb
+
+W&B is an optional live mirror (off unless `wandb.enabled`). A run-level
+`summary.json` (final val loss per stage, peak VRAM, throughput, config) is
+written at the end.
 """
 import csv
+import json
 import os
+import time
+
+FIELDS = ["elapsed_s", "stage", "epoch", "step", "split", "loss", "ppl",
+          "lr", "grad_norm", "tokens_per_sec", "gpu_mem_gb"]
 
 
 class RunLogger:
     def __init__(self, output_dir, wandb_cfg=None, run_config=None):
         os.makedirs(output_dir, exist_ok=True)
+        self.output_dir = output_dir
+        self._t0 = time.time()
         self._file = open(os.path.join(output_dir, "metrics.csv"), "w", newline="")
-        self._writer = csv.DictWriter(self._file, fieldnames=["stage", "step", "split", "loss"])
+        self._writer = csv.DictWriter(self._file, fieldnames=FIELDS, extrasaction="ignore")
         self._writer.writeheader()
         self._wandb = None
         if wandb_cfg and wandb_cfg.get("enabled"):
@@ -24,11 +38,21 @@ class RunLogger:
                 config=run_config,
             )
 
-    def log(self, stage, step, split, loss):
-        self._writer.writerow({"stage": stage, "step": step, "split": split, "loss": loss})
+    def log(self, **row):
+        row.setdefault("elapsed_s", round(time.time() - self._t0, 1))
+        self._writer.writerow(row)
         self._file.flush()
         if self._wandb:
-            self._wandb.log({f"{stage}/{split}_loss": loss})
+            stage, split = row.get("stage", ""), row.get("split", "")
+            self._wandb.log({f"{stage}/{split}_{k}": v for k, v in row.items()
+                             if isinstance(v, (int, float)) and k not in ("step", "epoch", "elapsed_s")})
+
+    def summary(self, **data):
+        data["elapsed_s"] = round(time.time() - self._t0, 1)
+        with open(os.path.join(self.output_dir, "summary.json"), "w") as f:
+            json.dump(data, f, indent=2)
+        if self._wandb:
+            self._wandb.summary.update(data)
 
     def close(self):
         self._file.close()

@@ -12,9 +12,11 @@ DEST="results/$NAME"
 
 mkdir -p "$DEST"
 cp "$RUN_DIR/metrics.csv" "$DEST/metrics.csv"
+cp "$RUN_DIR/config.yaml"  "$DEST/" 2>/dev/null || true   # resolved run config (reproducibility)
+cp "$RUN_DIR/summary.json" "$DEST/" 2>/dev/null || true   # final val loss, peak VRAM, throughput
 chrono figure --kind 1 --run "$RUN_DIR" --out "$DEST/figure1.png"
 
 git add "$DEST"
-git commit -m "results: $NAME (loss curves + metrics)"
+git commit -m "results: $NAME (loss curves + metrics + summary)"
 git push origin main
 echo "published $DEST -> GitHub"

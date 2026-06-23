@@ -149,8 +149,21 @@ free_memory()   # gc.collect() + torch.cuda.empty_cache()
 ## 10. Sweep across vintages
 
 One run = one `(vintage, config)`. The filtered+packed data is cached and reused,
-so only `model_repo`/`output_dir` change. Fan out with `scripts/launch_local.sh`
-(one vintage per GPU) or `scripts/slurm_array.sbatch` (SLURM array).
+so only `model_repo`/`output_dir`/`repo_id` change.
+
+**Sequential, one GPU** (the common case — fine-tune all vintages back-to-back,
+each auto-published to GitHub + HF):
+```bash
+bash scripts/train_all_vintages.sh                 # 1999 2005 2010 2015 2020 2024
+bash scripts/train_all_vintages.sh 1999 2020       # or a subset
+```
+It derives a per-vintage config from `configs/train.yaml` (overriding `model_repo`,
+`output_dir`, and the HF `repo_id`), trains, and runs `publish_results.sh`. Set
+`HF_USER` / `PERSIST` as env vars if they differ from the defaults. Rough budget:
+~3 h/vintage on an 80GB H100 → ~15–24 h for all six (cache built once).
+
+**Parallel, multi-GPU / cluster:** `scripts/launch_local.sh` (one vintage per GPU)
+or `scripts/slurm_array.sbatch` (SLURM array).
 
 ## Gotchas
 - **Shut down notebook kernels before training:** a live JupyterLab kernel keeps
