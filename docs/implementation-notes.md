@@ -130,11 +130,16 @@ return — the instruct file comments out `layer_outputs`, but we need it for
 
 All 1.55B parameters are updated (`AdamW(model.parameters())`). The paper does
 full SFT ("standard masked cross-entropy"); no LoRA/adapters mentioned.
-- **Verified (June 2026, notebook §13): full FT needs ≥80GB.** On a 40GB A100 it
-  **OOMs even at batch 1** (~37GB of activations+params in the forward alone — the
-  retained `layer_outputs` and the 52-layer autograd graph at 1792 tokens are
-  costly). Remedies if stuck on 40GB: gradient checkpointing, not retaining
-  `layer_outputs` during training, or 8-bit Adam. We proceed on an 80GB card.
+- **Verified (June 2026): memory is dominated by Adam states + activations, not
+  weights.** Model states ≈ 25 GB fixed (params 6 + grads 6 + Adam m,v 12 — the
+  16 bytes/param rule). Activations scale with batch×seq×layers and dominate: on a
+  **40GB** card full FT OOMs even at batch 1; on an **80GB H100**, `batch_size 8`
+  OOMs *in the forward* (~50 GB of activations across 52 layers × 1792 tokens ×
+  the 4x squared-ReLU MLP). `batch_size 2` fits 80GB without help.
+- **Fix wired (config `grad_checkpoint: true`, default on):** recompute each block
+  in the backward pass (`torch.utils.checkpoint`, ~10x less activation memory,
+  ~20% slower) **plus** skip retaining `layer_outputs` during training
+  (`forward(return_hidden=False)`). With these, `batch_size 8` fits one 80GB card.
 
 ## 8. Reproducibility — one global seed · Settled
 

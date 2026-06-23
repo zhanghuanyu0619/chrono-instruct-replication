@@ -21,6 +21,7 @@ import json
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 from huggingface_hub import PyTorchModelHubMixin, hf_hub_download
 
 
@@ -140,9 +141,16 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
         self.num_encoder_layers = num_layers // 2
         self.num_decoder_layers = num_layers - self.num_encoder_layers
         self.skip_weights = nn.Parameter(torch.ones(self.num_decoder_layers))
+        self.grad_checkpoint = False  # set True (training only) to recompute blocks in backward
 
-    def forward(self, inputs):
-        """Returns (logits[B,T,V] float, layer_outputs: list of per-layer hidden states)."""
+    def forward(self, inputs, return_hidden=True):
+        """Returns (logits[B,T,V] float, layer_outputs).
+
+        layer_outputs is the per-layer hidden-state list used by `embed`. Pass
+        return_hidden=False during training to skip retaining it. When
+        self.grad_checkpoint is set (training only), each block is recomputed in
+        the backward pass to cut activation memory ~10x.
+        """
         if inputs.dim() == 1:
             inputs = inputs.unsqueeze(0)
         B = inputs.size(0)
@@ -156,16 +164,23 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
         ]
         ve_enc, ve_dec = ve[: self.num_encoder_layers], ve[self.num_encoder_layers :]
 
+        ckpt = self.grad_checkpoint and self.training
+
+        def run_block(blk, *args):
+            return checkpoint(blk, *args, use_reentrant=False) if ckpt else blk(*args)
+
         layer_outputs = []
         skip_connections = []
         for i in range(self.num_encoder_layers):
-            x = self.blocks[i](x, ve_enc[i], x0)
+            x = run_block(self.blocks[i], x, ve_enc[i], x0)
             skip_connections.append(x)
-            layer_outputs.append(norm(x))
+            if return_hidden:
+                layer_outputs.append(norm(x))
         for i in range(self.num_decoder_layers):
             x = x + self.skip_weights[i] * skip_connections.pop()
-            x = self.blocks[self.num_encoder_layers + i](x, ve_dec[i], x0)
-            layer_outputs.append(norm(x))
+            x = run_block(self.blocks[self.num_encoder_layers + i], x, ve_dec[i], x0)
+            if return_hidden:
+                layer_outputs.append(norm(x))
 
         x = norm(x)
         logits = self.lm_head(x)

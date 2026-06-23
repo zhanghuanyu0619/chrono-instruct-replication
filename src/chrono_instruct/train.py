@@ -44,7 +44,7 @@ def evaluate(model, loader, device):
     for ids, labels in loader:
         ids, labels = ids.to(device), labels.to(device)
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
-            logits, _ = model(ids)
+            logits, _ = model(ids, return_hidden=False)
         total_loss += masked_lm_loss(logits, labels, reduction="sum").item()
         total_tokens += int((labels[:, 1:] != -100).sum())
     model.train()
@@ -68,7 +68,7 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
         for i, (ids, labels) in enumerate(loader):
             ids, labels = ids.to(device), labels.to(device)
             with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
-                logits, _ = model(ids)
+                logits, _ = model(ids, return_hidden=False)
                 loss = masked_lm_loss(logits, labels) / accum
             loss.backward()
             if (i + 1) % accum == 0:
@@ -96,6 +96,7 @@ def run(cfg):
     torch.manual_seed(cfg["seed"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ChronoGPT.from_pretrained(cfg["model_repo"]).to(device)
+    model.grad_checkpoint = cfg.get("grad_checkpoint", False)  # recompute blocks in backward to save VRAM
     model.train()
 
     # Packed data is filtered + built once and cached, then reused across vintages.

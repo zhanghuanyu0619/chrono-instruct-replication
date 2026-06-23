@@ -99,12 +99,12 @@ Then the full curriculum:
 chrono train --config configs/train.yaml
 ```
 
-> **40GB is not enough for full FT (verified).** On a 40GB A100 the model OOMs
-> **even at batch 1** (notebook §13) — the retained `layer_outputs` plus the
-> 52-layer autograd graph at 1792 tokens dominate. Use an **80GB card** (A100/H100
-> 80GB), where the config's `batch_size: 8` fits. If you must stay on 40GB:
-> gradient checkpointing, skip `layer_outputs` in the training forward, or 8-bit
-> Adam — none wired up yet, so prefer the 80GB card.
+> **Memory (verified).** Full FT is activation-heavy, not weight-heavy (~25 GB is
+> just Adam states). With `grad_checkpoint: true` (default in the config) plus
+> `return_hidden=False` during training, `batch_size: 8` fits one **80GB** card.
+> Without checkpointing, batch 8 OOMs even on 80GB; a **40GB** card OOMs at batch 1
+> regardless. If you still OOM: lower `batch_size`, raise `grad_accum` to keep the
+> effective batch (e.g. `2`/`16` = 32). Gradient checkpointing costs ~20% step time.
 
 ## 7. Figures + Table 2
 
