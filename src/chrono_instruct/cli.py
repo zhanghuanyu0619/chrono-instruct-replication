@@ -43,6 +43,7 @@ def main(argv=None):
     pp.add_argument("--repo", required=True, help="local run dir, e.g. runs/.../final")
     pp.add_argument("--to", required=True, help="target HF repo id")
     pp.add_argument("--private", action="store_true")
+    pp.add_argument("--message", default=None, help="HF commit message (e.g. stages + val loss)")
 
     pa = sub.add_parser("alpaca")
     pa.add_argument("--repo", required=True, help="model repo/dir to generate from")
@@ -107,7 +108,7 @@ def main(argv=None):
 
     elif args.cmd == "push":
         from .hub import push_dir
-        push_dir(args.repo, args.to, private=args.private)
+        push_dir(args.repo, args.to, private=args.private, commit_message=args.message)
 
     elif args.cmd == "alpaca":
         import json

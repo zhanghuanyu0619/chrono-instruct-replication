@@ -5,6 +5,7 @@ One run = one vintage = one process on one GPU. Stages are trained in order
 weights. Loss is masked cross-entropy on response tokens only. Multi-GPU /
 cluster fan-out is handled outside this file (see scripts/), never here.
 """
+import json
 import math
 import os
 import time
@@ -153,6 +154,16 @@ def run(cfg):
         final_val[stage["name"]] = round(train_stage(model, train_ds, val_ds, cfg, stage, device, logger), 4)
         model.save_pretrained(os.path.join(cfg["output_dir"], stage["name"]))
     model.save_pretrained(os.path.join(cfg["output_dir"], "final"))
+
+    # Resume-aware: merge with a prior run's summary so a Stage 2-3 resume keeps
+    # Stage 1's final val (matches the appended metrics.csv).
+    prior = os.path.join(cfg["output_dir"], "summary.json")
+    if os.path.exists(prior):
+        try:
+            with open(prior) as f:
+                final_val = {**json.load(f).get("final_val_loss", {}), **final_val}
+        except (ValueError, OSError):
+            pass
 
     logger.summary(
         model_repo=cfg["model_repo"],
