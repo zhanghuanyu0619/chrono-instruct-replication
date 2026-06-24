@@ -99,12 +99,18 @@ def main(argv=None):
 
     elif args.cmd == "eval":
         from .infer import load
-        from .eval import president_test
+        from .eval import president_test, major_events_test
         model, device = load(args.repo)
+        print("=== U.S. presidents (Table 2) ===")
         for r in president_test(model, device, args.cutoff):
             flag = "  (past cutoff)" if r["past_cutoff"] else ""
             ok = "OK" if r["correct"] else "x "
             print(f"{ok} {r['target_year']} {r['target']:<16} -> {r['prediction']!r}{flag}")
+        print("=== major events (Table 3) ===")
+        for r in major_events_test(model, device, args.cutoff):
+            flag = "  (past cutoff)" if r["past_cutoff"] else ""
+            ok = "OK" if r["correct"] else "x "
+            print(f"{ok} {r['event_year']} {r['answer']:<16} -> {r['prediction']!r}{flag}")
 
     elif args.cmd == "push":
         from .hub import push_dir

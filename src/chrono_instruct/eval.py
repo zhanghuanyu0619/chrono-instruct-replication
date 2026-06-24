@@ -1,8 +1,12 @@
 """Evaluation.
 
-president_test  -- the cheap, public, lookahead-bias consistency check (Table 2):
-                   prompt the model to name the most recent U.S. president and
-                   verify it cannot predict presidents past its knowledge cutoff.
+president_test  -- the lookahead-bias consistency check on U.S. presidents (Table 2):
+                   prompt with the three prior presidents and the target's actual
+                   inauguration year, and verify the model cannot name presidents
+                   past its knowledge cutoff.
+major_events_test -- the companion check on dated world events (Table 3): complete a
+                   sentence about an event and verify the model cannot recall events
+                   past its cutoff. Both decode deterministically (greedy), as in the paper.
 AlpacaEval (Figure 3) -- length-controlled win-rate vs Qwen-1.5-1.8B-Chat. The
                    flow is: generate outputs for each model (`alpaca_outputs`),
                    then score model-vs-reference with the canonical `alpaca_eval`
@@ -26,33 +30,79 @@ PRESIDENTS = [
 ]
 
 
-def president_prompt(history):
+def president_prompt(history, query_year):
+    """Build the Table 2 prompt: three prior presidents, then `query_year` to fill.
+
+    `query_year` is the TARGET's actual inauguration year (not previous+4): two-term
+    presidents make the gap 8 years, so deriving it arithmetically would mis-date the
+    blank (e.g. asking about 2013, mid-Obama, when the target took office in 2017).
+    """
     lines = ["U.S. Presidents in chronological order:"]
     for year, name in history:
         lines.append(f"Took office in {year}: President {name}")
-    lines.append("Took office in {year}: President".format(year=history[-1][0] + 4))
+    lines.append(f"Took office in {query_year}: President")
     return "\n".join(lines)
 
 
 @torch.no_grad()
 def president_test(model, device, cutoff_year):
-    """For each election, prompt with the 4 prior presidents and check the prediction.
+    """For each transition, prompt with the three prior presidents and check the prediction.
 
-    Returns a list of dicts; `past_cutoff` flags rows the model should NOT get
-    right if it is chronologically consistent.
+    Reads exactly two tokens by greedy decoding, as in the paper. Returns a list of
+    dicts; `past_cutoff` flags rows the model should NOT get right if it is
+    chronologically consistent.
     """
     results = []
     for i in range(3, len(PRESIDENTS)):
         history = PRESIDENTS[i - 3 : i]
         target_year, target_name = PRESIDENTS[i]
-        completion = generate(model, device, president_prompt(history),
-                              max_new_tokens=4, top_k=1, return_completion=True).strip()
+        completion = generate(model, device, president_prompt(history, target_year),
+                              max_new_tokens=2, top_k=1, return_completion=True).strip()
         results.append({
             "target_year": target_year,
             "target": target_name,
             "prediction": completion,
             "correct": target_name.split()[0] in completion,
             "past_cutoff": target_year > cutoff_year,
+        })
+    return results
+
+
+# (event_year, prompt prefix, accepted answer substrings) transcribed from Table 3,
+# Panel A. The model completes the blank; verify exact wording against the PDF if you
+# need a byte-faithful reproduction. Accepted terms are matched case-insensitively.
+MAJOR_EVENTS = [
+    (2001, "The Sarbanes-Oxley Act was introduced in response to the 2001 Enron", ["scandal"]),
+    (2003, "In 2003, a major public health crisis was the outbreak of the virus known as", ["SARS"]),
+    (2008, "In 2008, the global economy was dominated by the subprime mortgage", ["crisis"]),
+    (2016, "In 2016, market volatility increased surrounding the general vote known as the Brexit",
+     ["referendum"]),
+    (2020, "In 2020, the global economy was devastated by the health crisis known as the",
+     ["COVID", "coronavirus", "corona"]),
+    (2022, "In 2022, a major milestone for generative AI was marked by the release of the AI chatbot "
+           "known as", ["ChatGPT", "GPT"]),
+]
+
+
+@torch.no_grad()
+def major_events_test(model, device, cutoff_year):
+    """Complete a dated-event sentence and check the term (Table 3).
+
+    Reads three tokens by greedy decoding, as in the paper. `past_cutoff` flags events
+    after the model's knowledge cutoff — a chronologically consistent model should fail
+    those.
+    """
+    results = []
+    for event_year, prompt, answers in MAJOR_EVENTS:
+        completion = generate(model, device, prompt,
+                              max_new_tokens=3, top_k=1, return_completion=True).strip()
+        low = completion.lower()
+        results.append({
+            "event_year": event_year,
+            "answer": answers[0],
+            "prediction": completion,
+            "correct": any(a.lower() in low for a in answers),
+            "past_cutoff": event_year > cutoff_year,
         })
     return results
 
