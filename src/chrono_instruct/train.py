@@ -33,17 +33,20 @@ def cosine_lr(step, total, base_lr, warmup):
 
 
 @torch.no_grad()
-def evaluate(model, loader, device):
+def evaluate(model, loader, device, max_batches=None):
     """Token-weighted mean response loss.
 
     Sums per-token cross-entropy over all response tokens and divides by the token
     count — NOT a mean of per-batch means, which is biased when batches hold
-    different numbers of response tokens (e.g. the last batch, or varying mask
-    density). Runs under the same bf16 autocast as training.
+    different numbers of response tokens. Runs under the same bf16 autocast as
+    training. `max_batches` caps cost for cheap periodic (in-stage) validation;
+    leave None for the full held-out set at epoch end.
     """
     model.eval()
     total_loss, total_tokens = 0.0, 0
-    for ids, labels in loader:
+    for n, (ids, labels) in enumerate(loader):
+        if max_batches and n >= max_batches:
+            break
         ids, labels = ids.to(device), labels.to(device)
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
             logits, _ = model(ids, return_hidden=False)
@@ -99,9 +102,15 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
                                        tokens_per_sec=round(tps), gpu_mem_gb=round(mem, 1))
                 if cfg.get("save_every") and step > 0 and step % cfg["save_every"] == 0:
                     model.save_pretrained(os.path.join(cfg["output_dir"], f"{name}-step{step}"))
+                if cfg.get("eval_every") and step > 0 and step % cfg["eval_every"] == 0:
+                    vloss = evaluate(model, val_loader, device, max_batches=cfg.get("eval_max_batches", 50))
+                    print(f"[{name}] step {step}/{total_steps} val_loss {vloss:.4f}")
+                    if run_logger:
+                        run_logger.log(stage=name, epoch=epoch, step=step, split="val",
+                                       loss=round(vloss, 4), ppl=round(math.exp(min(vloss, 20)), 2))
                 step += 1
         opt.zero_grad(set_to_none=True)  # drop any partial accum group so its grads can't leak into the next epoch
-        val_loss = evaluate(model, val_loader, device)
+        val_loss = evaluate(model, val_loader, device)  # full held-out set at epoch end
         print(f"[{name}] epoch {epoch} val_loss {val_loss:.4f}")
         if run_logger:
             run_logger.log(stage=name, epoch=epoch, step=step, split="val",
