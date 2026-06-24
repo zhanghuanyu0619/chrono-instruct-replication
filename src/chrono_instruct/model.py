@@ -203,8 +203,14 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
 
     @classmethod
     def from_pretrained(cls, repo_id, cache_dir=None, **kwargs):
-        config_path = hf_hub_download(repo_id=repo_id, filename="config.pt", cache_dir=cache_dir)
-        bin_path = hf_hub_download(repo_id=repo_id, filename="pytorch_model.bin", cache_dir=cache_dir)
+        # Accept a local checkpoint dir (e.g. runs/.../stage1_scratch for resume, or
+        # for `chrono infer --repo <dir>`) as well as a Hugging Face repo id.
+        if os.path.isdir(repo_id):
+            config_path = os.path.join(repo_id, "config.pt")
+            bin_path = os.path.join(repo_id, "pytorch_model.bin")
+        else:
+            config_path = hf_hub_download(repo_id=repo_id, filename="config.pt", cache_dir=cache_dir)
+            bin_path = hf_hub_download(repo_id=repo_id, filename="pytorch_model.bin", cache_dir=cache_dir)
         config = torch.load(config_path, map_location="cpu", weights_only=False)
         model = cls(**config)
         model.load_state_dict(torch.load(bin_path, map_location="cpu", weights_only=False))

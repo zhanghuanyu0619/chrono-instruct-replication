@@ -142,16 +142,20 @@ class PackedDataset(torch.utils.data.Dataset):
 
 
 def load_stage(dataset, sources, block_size, val_fraction=0.05, seed=123, val_max_blocks=None):
-    blocks = pack_blocks(stage_examples(dataset, sources), block_size)
+    # Split by EXAMPLE before packing, then pack each side separately. Splitting
+    # blocks *after* packing leaks: an example straddling a block boundary could
+    # land its head in train and tail in val, deflating val loss. This holds out
+    # whole examples — "never seen by the optimizer", as the paper requires.
+    examples = list(stage_examples(dataset, sources))
     g = torch.Generator().manual_seed(seed)
-    perm = torch.randperm(len(blocks), generator=g).tolist()
-    n_val = int(len(blocks) * val_fraction)
+    perm = torch.randperm(len(examples), generator=g).tolist()
+    n_val = int(len(examples) * val_fraction)
+    val_ex = [examples[i] for i in perm[:n_val]]
+    train_ex = [examples[i] for i in perm[n_val:]]
+    val_blocks = pack_blocks(val_ex, block_size)
     if val_max_blocks:                 # cap the (random) held-out set so a FULL eval stays cheap
-        n_val = min(n_val, val_max_blocks)
-    val_idx, train_idx = perm[:n_val], perm[n_val:]
-    train = PackedDataset([blocks[i] for i in train_idx])
-    val = PackedDataset([blocks[i] for i in val_idx])
-    return train, val
+        val_blocks = val_blocks[:val_max_blocks]
+    return PackedDataset(pack_blocks(train_ex, block_size)), PackedDataset(val_blocks)
 
 
 def load_raw(dataset_name):
@@ -174,6 +178,7 @@ def source_counts(dataset, after_filter=False, min_confidence=10):
 
 def _cache_key(cfg):
     payload = {
+        "split": "example-v2",  # bump to invalidate old block-level-split caches
         "dataset": cfg["dataset"],
         "block_size": cfg["block_size"],
         "val_fraction": cfg.get("val_fraction", 0.05),

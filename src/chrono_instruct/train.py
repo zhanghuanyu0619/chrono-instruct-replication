@@ -63,15 +63,38 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
     name = stage["name"]
     accum = cfg.get("grad_accum", 1)
     log_every = cfg.get("log_every", 20)
+    eval_every = cfg.get("eval_every")
     grad_clip = cfg.get("grad_clip")          # None -> no clipping (norm still logged)
     tokens_per_step = cfg["batch_size"] * cfg["block_size"] * accum
     steps_per_epoch = len(loader) // accum    # only full accum groups step; floor matches reality
     total_steps = steps_per_epoch * stage["epochs"]
     warmup = int(total_steps * cfg.get("warmup_ratio", 0.03))
 
-    step = 0
+    def mem_gb():
+        return torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0
+
+    def log_point(step, epoch, train_loss, lr, grad_norm, tps):
+        """Log train AND val at the SAME step (aligned curves, like the paper's Fig 1)."""
+        vloss = evaluate(model, val_loader, device)
+        print(f"[{name}] step {step}/{total_steps} train {train_loss:.4f} val {vloss:.4f} "
+              f"lr {lr:.2e} |g| {grad_norm:.2f} {tps:,.0f} tok/s {mem_gb():.1f}GB")
+        if run_logger:
+            run_logger.log(stage=name, epoch=epoch, step=step, split="train", loss=round(train_loss, 4),
+                           lr=lr, grad_norm=round(grad_norm, 3), tokens_per_sec=round(tps), gpu_mem_gb=round(mem_gb(), 1))
+            run_logger.log(stage=name, epoch=epoch, step=step, split="val",
+                           loss=round(vloss, 4), ppl=round(math.exp(min(vloss, 20)), 2))
+        return vloss
+
+    # step 0: the starting point (base / previous-stage weights, before this stage updates anything)
+    ids0, labels0 = next(iter(loader))
+    with torch.no_grad(), torch.autocast(device_type=device.type, dtype=torch.bfloat16):
+        logits0, _ = model(ids0.to(device), return_hidden=False)
+    val_loss = log_point(0, 0, masked_lm_loss(logits0, labels0.to(device)).item(),
+                         cosine_lr(0, total_steps, stage["lr"], warmup), 0.0, 0.0)
+
+    step = 1  # step 0 is the pre-training anchor above; counting updates from 1
     last_t, last_step = time.time(), 0
-    val_loss = float("nan")
+    tl_sum, tl_n, grad_norm = 0.0, 0, 0.0
     for epoch in range(stage["epochs"]):
         for i, (ids, labels) in enumerate(loader):
             ids, labels = ids.to(device), labels.to(device)
@@ -80,39 +103,32 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
                 loss = masked_lm_loss(logits, labels) / accum
             loss.backward()
             if (i + 1) % accum == 0:
-                grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip or 1e30)
+                grad_norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip or 1e30))
                 lr = cosine_lr(step, total_steps, stage["lr"], warmup)
                 for group in opt.param_groups:
                     group["lr"] = lr
                 opt.step()
                 opt.zero_grad(set_to_none=True)
+                tl_sum += loss.item() * accum
+                tl_n += 1
                 if step % log_every == 0:
+                    print(f"[{name}] step {step}/{total_steps} train {loss.item() * accum:.4f}")
+                if eval_every and step % eval_every == 0:        # train+val logged together
                     now = time.time()
-                    tps = (step - last_step or 1) * tokens_per_step / (now - last_t)
+                    tps = (step - last_step) * tokens_per_step / (now - last_t)
                     last_t, last_step = now, step
-                    train_loss = loss.item() * accum
-                    mem = torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0
-                    print(f"[{name}] step {step}/{total_steps} loss {train_loss:.4f} "
-                          f"lr {lr:.2e} |g| {float(grad_norm):.2f} {tps:,.0f} tok/s {mem:.1f}GB")
-                    if run_logger:
-                        run_logger.log(stage=name, epoch=epoch, step=step, split="train",
-                                       loss=round(train_loss, 4), lr=lr, grad_norm=round(float(grad_norm), 3),
-                                       tokens_per_sec=round(tps), gpu_mem_gb=round(mem, 1))
-                if cfg.get("save_every") and step > 0 and step % cfg["save_every"] == 0:
+                    val_loss = log_point(step, epoch, tl_sum / max(1, tl_n), lr, grad_norm, tps)
+                    tl_sum, tl_n = 0.0, 0
+                if cfg.get("save_every") and step % cfg["save_every"] == 0:
                     model.save_pretrained(os.path.join(cfg["output_dir"], f"{name}-step{step}"))
-                if cfg.get("eval_every") and step > 0 and step % cfg["eval_every"] == 0:
-                    vloss = evaluate(model, val_loader, device)
-                    print(f"[{name}] step {step}/{total_steps} val_loss {vloss:.4f}")
-                    if run_logger:
-                        run_logger.log(stage=name, epoch=epoch, step=step, split="val",
-                                       loss=round(vloss, 4), ppl=round(math.exp(min(vloss, 20)), 2))
                 step += 1
         opt.zero_grad(set_to_none=True)  # drop any partial accum group so its grads can't leak into the next epoch
-        val_loss = evaluate(model, val_loader, device)  # full held-out set at epoch end
-        print(f"[{name}] epoch {epoch} val_loss {val_loss:.4f}")
-        if run_logger:
-            run_logger.log(stage=name, epoch=epoch, step=step, split="val",
-                           loss=round(val_loss, 4), ppl=round(math.exp(min(val_loss, 20)), 2))
+
+    # final point (same step for train + val) so both curves end together
+    now = time.time()
+    tps = (step - 1 - last_step or 1) * tokens_per_step / max(1e-6, now - last_t)
+    val_loss = log_point(step - 1, stage["epochs"] - 1, tl_sum / max(1, tl_n) if tl_n else float("nan"),
+                         cosine_lr(step - 1, total_steps, stage["lr"], warmup), grad_norm, tps)
     return val_loss
 
 

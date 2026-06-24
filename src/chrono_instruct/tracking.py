@@ -25,9 +25,14 @@ class RunLogger:
         os.makedirs(output_dir, exist_ok=True)
         self.output_dir = output_dir
         self._t0 = time.time()
-        self._file = open(os.path.join(output_dir, "metrics.csv"), "w", newline="")
+        # Append so a resumed run (same output_dir, later stages) accumulates the
+        # full curve. Delete metrics.csv to start fresh. Header only on a new file.
+        path = os.path.join(output_dir, "metrics.csv")
+        new = not os.path.exists(path)
+        self._file = open(path, "a", newline="")
         self._writer = csv.DictWriter(self._file, fieldnames=FIELDS, extrasaction="ignore")
-        self._writer.writeheader()
+        if new:
+            self._writer.writeheader()
         self._wandb = None
         if wandb_cfg and wandb_cfg.get("enabled"):
             import wandb

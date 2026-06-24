@@ -99,6 +99,33 @@ Then the full curriculum:
 chrono train --config configs/train.yaml
 ```
 
+### 6b. Stage-by-stage (train Stage 1, diagnose, then resume Stages 2–3)
+Because each stage continues from the previous stage's weights, you can stop after
+Stage 1, inspect it, and resume. Use **two configs that share the same `output_dir`**
+(so `metrics.csv` accumulates and the figure shows all stages):
+
+**Phase 1 — Stage 1 only.** Copy `train.yaml` → `train_s1.yaml`, keep only the
+`stage1_scratch` entry under `stages:`, keep `model_repo` = the base vintage:
+```bash
+chrono train --config configs/train_s1.yaml          # saves <output_dir>/stage1_scratch + final
+chrono figure --kind 1 --run <output_dir>            # inspect the Stage-1 curve
+```
+Diagnose: is Stage 1's val still dropping at the last epoch? If so, raise its
+`epochs` and re-run (delete `<output_dir>/metrics.csv` first to start the curve clean).
+
+**Phase 2 — resume Stages 2–3.** Copy `train.yaml` → `train_s23.yaml`, keep only
+`stage2_self_instruct` + `stage3_tulu`, set **`model_repo` to the Stage-1 checkpoint**
+and the **same `output_dir`**:
+```yaml
+model_repo: /home/ubuntu/persist/runs/chrono-instruct-2020/stage1_scratch   # local dir = resume point
+output_dir: /home/ubuntu/persist/runs/chrono-instruct-2020                  # same -> metrics append
+```
+```bash
+chrono train --config configs/train_s23.yaml
+```
+`from_pretrained` now accepts a local directory, so `model_repo` can be any saved
+checkpoint. The combined `metrics.csv` then holds all three stages for one Fig 1.
+
 > **Memory (verified).** Full FT is activation-heavy, not weight-heavy (~25 GB is
 > just Adam states). With `grad_checkpoint: true` (default in the config) plus
 > `return_hidden=False` during training, `batch_size: 8` fits one **80GB** card.
