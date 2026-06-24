@@ -79,7 +79,7 @@ def _parse_label(label):
             obj = parse(label)
             if isinstance(obj, dict):
                 return obj
-        except Exception:
+        except (ValueError, SyntaxError):  # JSONDecodeError subclasses ValueError; literal_eval raises both
             continue
     return None
 
@@ -126,6 +126,8 @@ def pack_blocks(examples, block_size):
             blocks.append((chunk_ids, labels))
             buf_ids = buf_ids[block_size:]
             buf_mask = buf_mask[block_size:]
+    if buf_ids:  # sub-block tail can't fill a fixed-length block; report rather than drop silently
+        print(f"[data] pack_blocks: dropped {len(buf_ids)} trailing tokens (< block_size={block_size})")
     return blocks
 
 

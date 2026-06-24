@@ -45,8 +45,8 @@ def president_test(model, device, cutoff_year):
     for i in range(3, len(PRESIDENTS)):
         history = PRESIDENTS[i - 3 : i]
         target_year, target_name = PRESIDENTS[i]
-        out = generate(model, device, president_prompt(history), max_new_tokens=4, top_k=1)
-        completion = out[len(president_prompt(history)):].strip()
+        completion = generate(model, device, president_prompt(history),
+                              max_new_tokens=4, top_k=1, return_completion=True).strip()
         results.append({
             "target_year": target_year,
             "target": target_name,
@@ -79,9 +79,12 @@ def alpaca_outputs(repo, instructions, generator, backend="chrono", max_new_toke
         outs = []
         for item in instructions:
             prompt = PROMPT_NO_INPUT.format(instruction=item["instruction"])
-            text = generate(model, device, prompt, max_new_tokens=max_new_tokens)
+            # Greedy (top_k=1) to match the HF reference's do_sample=False below: the
+            # win-rate must not confound decoding strategy with model quality.
+            completion = generate(model, device, prompt, max_new_tokens=max_new_tokens,
+                                  top_k=1, return_completion=True)
             outs.append({"instruction": item["instruction"],
-                         "output": text[len(prompt):].strip(), "generator": generator})
+                         "output": completion.strip(), "generator": generator})
         return outs
 
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -107,9 +110,13 @@ def alpaca_winrate(model_outputs_json, reference_outputs_json):
     by alpaca_eval version; the saved output JSONs are the stable artifacts.
     """
     from alpaca_eval import evaluate as alpaca_evaluate
+    with open(model_outputs_json) as f:
+        model_outputs = json.load(f)
+    with open(reference_outputs_json) as f:
+        reference_outputs = json.load(f)
     leaderboard, _ = alpaca_evaluate(
-        model_outputs=json.load(open(model_outputs_json)),
-        reference_outputs=json.load(open(reference_outputs_json)),
+        model_outputs=model_outputs,
+        reference_outputs=reference_outputs,
         is_return_instead_of_print=True,
     )
     row = leaderboard.iloc[0]

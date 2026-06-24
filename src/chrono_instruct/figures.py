@@ -59,7 +59,8 @@ def figure2(run_dirs, out="figure2.png", labels=None):
 
 def figure3(results_json, out="figure3.png"):
     import matplotlib.pyplot as plt
-    data = json.load(open(results_json))
+    with open(results_json) as f:
+        data = json.load(f)
     years = sorted(data, key=int)
     vals = [data[y] for y in years]
     fig, ax = plt.subplots(figsize=(7, 4))
