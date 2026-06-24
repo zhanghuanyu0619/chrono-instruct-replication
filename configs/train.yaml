@@ -26,7 +26,7 @@ grad_clip: null              # null = no clipping (grad norm still logged); set 
 val_fraction: 0.05
 log_every: 20                # train metrics (loss, lr, grad_norm, tok/s, VRAM) logged every N steps
 eval_every: 200              # periodic in-stage validation -> a real val curve (like the paper's Fig 1)
-eval_max_batches: 50         # cap batches per periodic eval (full held-out set still runs at epoch end)
+val_max_blocks: 500          # cap the random held-out set so EACH eval covers the whole val set cheaply
 save_every: 500
 
 # Optional integrations — both OFF by default. Loss curves always go to

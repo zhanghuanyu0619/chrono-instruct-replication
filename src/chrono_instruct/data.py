@@ -141,11 +141,13 @@ class PackedDataset(torch.utils.data.Dataset):
         return torch.tensor(ids, dtype=torch.long), torch.tensor(labels, dtype=torch.long)
 
 
-def load_stage(dataset, sources, block_size, val_fraction=0.05, seed=123):
+def load_stage(dataset, sources, block_size, val_fraction=0.05, seed=123, val_max_blocks=None):
     blocks = pack_blocks(stage_examples(dataset, sources), block_size)
     g = torch.Generator().manual_seed(seed)
     perm = torch.randperm(len(blocks), generator=g).tolist()
     n_val = int(len(blocks) * val_fraction)
+    if val_max_blocks:                 # cap the (random) held-out set so a FULL eval stays cheap
+        n_val = min(n_val, val_max_blocks)
     val_idx, train_idx = perm[:n_val], perm[n_val:]
     train = PackedDataset([blocks[i] for i in train_idx])
     val = PackedDataset([blocks[i] for i in val_idx])
@@ -175,6 +177,7 @@ def _cache_key(cfg):
         "dataset": cfg["dataset"],
         "block_size": cfg["block_size"],
         "val_fraction": cfg.get("val_fraction", 0.05),
+        "val_max_blocks": cfg.get("val_max_blocks"),
         "seed": cfg.get("seed", 123),
         "min_confidence": cfg.get("min_confidence", 10),
         "stages": [[s["name"], s["sources"]] for s in cfg["stages"]],
@@ -203,7 +206,8 @@ def prepare_stages(cfg):
     stages = {}
     for s in cfg["stages"]:
         train_ds, val_ds = load_stage(rows, s["sources"], cfg["block_size"],
-                                      cfg.get("val_fraction", 0.05), cfg.get("seed", 123))
+                                      cfg.get("val_fraction", 0.05), cfg.get("seed", 123),
+                                      cfg.get("val_max_blocks"))
         print(f"[data]   {s['name']}: {len(train_ds):,} train + {len(val_ds):,} val blocks")
         stages[s["name"]] = (train_ds, val_ds)
     os.makedirs(cache_dir, exist_ok=True)
