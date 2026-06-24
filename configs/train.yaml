@@ -38,6 +38,7 @@ wandb:
 push_to_hub:
   enabled: false            # push output_dir/final to the Hub when training ends
   repo_id: HZ0619/chrono-instruct-v1-20201231   # must be your HF namespace (hf auth whoami), NOT GitHub
+  final_stage: stage3_tulu  # only a run ENDING here pushes to repo_id; partial runs get a "-<stage>" suffix
   private: true             # needs a WRITE token (hf auth login / HF_TOKEN)
 
 # Curriculum, trained in order; each stage continues from the previous weights.

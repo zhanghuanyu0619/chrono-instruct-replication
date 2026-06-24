@@ -37,9 +37,11 @@ class RunLogger:
         if wandb_cfg and wandb_cfg.get("enabled"):
             import wandb
             self._wandb = wandb
+            base = wandb_cfg.get("name") or os.path.basename(output_dir.rstrip("/"))
             wandb.init(
                 project=wandb_cfg.get("project", "chrono-instruct"),
-                name=wandb_cfg.get("name") or os.path.basename(output_dir.rstrip("/")),
+                name=f"{base}-{time.strftime('%Y%m%d-%H%M%S')}",  # unique per launch -> no overlaid same-name runs
+                group=base,                                        # ...but still grouped by vintage/output_dir
                 config=run_config,
             )
 

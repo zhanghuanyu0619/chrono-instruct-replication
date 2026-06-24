@@ -167,5 +167,11 @@ def run(cfg):
     push = cfg.get("push_to_hub")
     if push and push.get("enabled"):
         from .hub import push_dir
-        push_dir(os.path.join(cfg["output_dir"], "final"), push["repo_id"],
-                 private=push.get("private", True))
+        # Push the completed model to the canonical repo; a PARTIAL run (didn't end on
+        # final_stage) gets a "-<last_stage>" suffix so it can't clobber the final model.
+        last_stage = cfg["stages"][-1]["name"]
+        final_stage = push.get("final_stage") or last_stage
+        repo_id = push["repo_id"] if last_stage == final_stage else f"{push['repo_id']}-{last_stage}"
+        msg = f"stages={[s['name'] for s in cfg['stages']]} final_val={final_val} seed={cfg['seed']}"
+        push_dir(os.path.join(cfg["output_dir"], "final"), repo_id,
+                 private=push.get("private", True), commit_message=msg)
