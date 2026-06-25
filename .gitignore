@@ -20,6 +20,9 @@ configs/_vintage_*.yaml
 !results/**/*.png
 !results/**/*.csv
 
+# superseded standalone runbook — the "why" now lives in lambda_setup.sh comments
+docs/env-setup.md
+
 # OS / editor
 .DS_Store
 .ipynb_checkpoints/

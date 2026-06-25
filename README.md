@@ -40,9 +40,9 @@ for the AlpacaEval (Figure 3) judge + the Qwen reference model.
 
 ## Quickstart
 
-For a GPU box (Lambda H100), see `docs/env-setup.md` for the proven environment
-(stable `cu126` torch, not the upstream nightly) or just run
-`bash scripts/lambda_setup.sh`. Locally:
+For a GPU box (Lambda H100), run `bash scripts/lambda_setup.sh` for the proven
+environment (stable `cu126` torch, not the upstream nightly); see `docs/running-guide.md`
+for the full end-to-end workflow. Locally:
 
 ```bash
 pip install -e .

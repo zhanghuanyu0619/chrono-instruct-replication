@@ -2,12 +2,12 @@
 
 Full workflow for one vintage: provision → setup → verify → train → figures →
 publish results to GitHub → push checkpoints to Hugging Face → inference. §2 sets
-up the environment via `scripts/lambda_setup.sh`; `env-setup.md` is the background
-runbook explaining *why* (stable `cu126` torch, not the upstream nightly).
+up the environment via `scripts/lambda_setup.sh` (which documents *why* stable
+`cu126` torch, not the upstream nightly).
 
-> **Division of artifacts:** loss logs + figures go to **GitHub** (small, in
-> `results/`); model checkpoints go to the **Hugging Face Hub** (large). Weights
-> are never committed to git.
+> **Division of artifacts:** loss logs + figures → **GitHub** (small, in
+> `results/`); checkpoints → **Hugging Face Hub** (large). Weights are never
+> committed to git.
 
 ---
 
@@ -17,58 +17,50 @@ A single GPU is enough — the 1.55B model is one process on one card.
 - **80GB (A100/H100 80GB):** trains at the config's `batch_size: 8`.
 - **40GB (A100 40GB):** full fine-tuning is tight; see the OOM note in §6.
 
-Attach a **persistent filesystem** and mount it (e.g. `/home/ubuntu/persist`).
-Lambda's instance disk is wiped on termination — checkpoints and the HF cache
-must live on the persistent mount.
-
 ## 2. One-time setup
 
-**Start tmux FIRST**, then do everything inside it — so the venv activation and
-env vars live in the persistent session (a dropped SSH connection won't kill a
-multi-hour run, and re-attaching keeps the venv active):
-```bash
-tmux new -s chrono     # detach: Ctrl-b d   |   reattach: tmux attach -t chrono
-```
+For multi-hour runs over a local SSH session, start inside tmux first (see
+[§11](#11-tmux-for-long-runs-over-local-ssh)); Lambda's web terminal / hosted
+JupyterLab keep the session alive server-side, so tmux is optional there.
 
-Then, **inside tmux**:
 ```bash
 git clone https://github.com/zhanghuanyu0619/chrono-instruct-replication.git
 cd chrono-instruct-replication
 export PERSIST=/home/ubuntu/persist
 bash scripts/lambda_setup.sh                 # stable cu126 torch + deps, HF cache on $PERSIST
 source $PERSIST/venv/bin/activate            # literal path; $PERSIST must be exported in THIS shell
-pip install -e '.[dev,viz,eval]'             # tests, figures/W&B, AlpacaEval
-pip install jupyterlab ipykernel             # for the verification notebook — INTO the venv
+pip install -e '.[dev,viz,eval,nb]'          # tests, figures/W&B, AlpacaEval, notebook tooling
 ```
 
-> Do NOT activate the venv *before* `tmux new` — a fresh tmux shell won't inherit
-> it. Activate inside tmux (as above); after `tmux attach` the activation persists.
+`lambda_setup.sh` installs `torch==2.7.0` from the cu126 index first (so that build
+wins over PyPI's default), then `pip install -e .` (core deps from `pyproject.toml`).
+All optional tooling lives in extras: `dev,viz,eval,nb`.
 
 ## 3. Authenticate with Hugging Face
 
-Needed for higher dataset download rate limits and for pushing checkpoints:
+For higher download rate limits and for pushing checkpoints:
 ```bash
-hf auth login          # paste a WRITE token (write = required for pushing models)
+hf auth login          # paste a WRITE token (required for pushing models)
 ```
-The token is cached under `$HF_HOME` (on the persistent FS). Never hardcode it.
+Cached under `$HF_HOME` (persistent FS). Never hardcode it.
 
 ## 4. Verify before training
 
 ```bash
 pytest -q                                    # CPU smoke test, ~5s
 
-# Register the venv as a Jupyter kernel (jupyterlab + ipykernel installed in §2).
-# --user makes it visible to ANY JupyterLab, including Lambda's hosted one.
+# Register the venv as a Jupyter kernel. --user makes it visible to ANY
+# JupyterLab, including Lambda's hosted one.
 python -m ipykernel install --user --name chrono --display-name "Python (chrono)"
-jupyter lab notebooks/verify_pipeline.ipynb  # or use Lambda's hosted JupyterLab
+jupyter lab notebooks/verify_pipeline.ipynb  # or Lambda's hosted JupyterLab
 ```
-Select the **Python (chrono)** kernel (top-right / Kernel → Change Kernel) before
-running. Verify you're on the right one with a quick cell:
+Select the **Python (chrono)** kernel before running, and confirm it points at the
+venv:
 ```python
 import sys; print(sys.executable)            # must be /home/ubuntu/persist/venv/bin/python
 ```
-If it shows a different path (or `tiktoken` ImportError), the kernel points at the
-wrong Python — re-run the `ipykernel install` line above *with the venv active*.
+Wrong path (or `tiktoken` ImportError) → re-run the `ipykernel install` line *with
+the venv active*.
 
 Confirm in the notebook: screen total ≈ 425,119 (§4/§4b), param dtype (§9),
 logit parity ≈ 0 vs the official file (§10), and peak VRAM (§13).
@@ -127,11 +119,16 @@ chrono train --config configs/train_s23.yaml
 checkpoint. The combined `metrics.csv` then holds all three stages for one Fig 1.
 
 > **Memory (verified).** Full FT is activation-heavy, not weight-heavy (~25 GB is
-> just Adam states). With `grad_checkpoint: true` (default in the config) plus
-> `return_hidden=False` during training, `batch_size: 8` fits one **80GB** card.
-> Without checkpointing, batch 8 OOMs even on 80GB; a **40GB** card OOMs at batch 1
-> regardless. If you still OOM: lower `batch_size`, raise `grad_accum` to keep the
-> effective batch (e.g. `2`/`16` = 32). Gradient checkpointing costs ~20% step time.
+> just Adam states). `grad_checkpoint: true` (config default) recomputes each
+> transformer block in the backward pass instead of storing its activations:
+> ~10× less block-activation memory for ~20% slower steps (one extra forward over
+> the checkpointed blocks). Active only during training (`model.py`,
+> `grad_checkpoint and self.training`), per-block, via
+> `torch.utils.checkpoint(..., use_reentrant=False)`; paired with
+> `return_hidden=False`, this fits `batch_size: 8` on one **80GB** card. Without
+> it, batch 8 OOMs even on 80GB; a **40GB** card OOMs at batch 1 regardless. If you
+> still OOM: lower `batch_size`, raise `grad_accum` to keep the effective batch
+> (e.g. `2`/`16` = 32).
 
 ## 7. Figures + Table 2
 
@@ -139,6 +136,9 @@ checkpoint. The combined `metrics.csv` then holds all three stages for one Fig 1
 chrono figure --kind 1 --run /home/ubuntu/persist/runs/chrono-instruct-2020   # Fig 1
 chrono eval --repo manelalab/chrono-gpt-instruct-v1-20201231 --cutoff 2020     # Table 2
 ```
+`--repo` takes an HF repo id **or a local run dir** (e.g.
+`/home/ubuntu/persist/runs/chrono-instruct-2020/final`) — eval, inference (§9), and
+AlpacaEval generation all accept either.
 For the vintage sweep: `chrono figure --kind 2 --runs /home/ubuntu/persist/runs/chrono-instruct-*`.
 For Figure 3 (AlpacaEval), see `configs/eval.yaml`.
 
@@ -165,8 +165,8 @@ end of training.)
 python scripts/inference_demo.py --repo manelalab/chrono-gpt-instruct-v1-19991231
 # or your own: --repo /home/ubuntu/persist/runs/chrono-instruct-2020/final
 ```
-It generates, embeds, then `del model; free_memory()` and reports VRAM. In a
-notebook/REPL, free the GPU between model loads with:
+Generates, embeds, then `del model; free_memory()` and reports VRAM. To free the
+GPU between model loads in a notebook/REPL:
 ```python
 from chrono_instruct.infer import free_memory
 del model
@@ -192,6 +192,20 @@ It derives a per-vintage config from `configs/train.yaml` (overriding `model_rep
 **Parallel, multi-GPU / cluster:** `scripts/launch_local.sh` (one vintage per GPU)
 or `scripts/slurm_array.sbatch` (SLURM array).
 
+## 11. tmux (for long runs over local SSH)
+
+Only needed when you drive the box from a **local terminal over SSH** — a dropped
+connection would otherwise kill the job. Skip it if you use Lambda's web terminal
+or hosted JupyterLab (those persist server-side). tmux runs on the **remote**
+instance; if missing, `sudo apt-get install -y tmux`.
+
+```bash
+tmux new -s chrono     # detach: Ctrl-b d   |   reattach: tmux attach -t chrono
+```
+Run the §2 setup (and everything after) **inside** the tmux session. Activate the
+venv *inside* tmux, not before `tmux new` — a fresh tmux shell won't inherit it.
+After `tmux attach`, the activation persists.
+
 ## Gotchas
 - **Shut down notebook kernels before training:** a live JupyterLab kernel keeps
   its models on the GPU (tens of GB), so `chrono train` then OOMs even on an 80GB
@@ -199,9 +213,8 @@ or `scripts/slurm_array.sbatch` (SLURM array).
 - **`batch_size` on one card:** full FT of 1.55B is memory-heavy; if you OOM on a
   clean 80GB card, lower `batch_size` and raise `grad_accum` to keep the effective
   batch (e.g. `2`/`16` = 32). Watch `nvidia-smi` for the real peak.
-- **tmux loses your venv:** activate the venv *inside* tmux, not before — a fresh
-  tmux shell doesn't inherit activation. Symptom: `No module named ipykernel` /
-  wrong-Python kernel / `tiktoken` not found.
+- **tmux loses your venv:** activate the venv *inside* tmux, not before (§11).
+  Symptom: `No module named ipykernel` / wrong-Python kernel / `tiktoken` not found.
 - **Wrong notebook kernel:** if `sys.executable` isn't the venv path, re-run
   `python -m ipykernel install --user --name chrono` with the venv active.
 - **Ephemeral disk:** keep `output_dir`, `$HF_HOME`, and the venv on `$PERSIST`.

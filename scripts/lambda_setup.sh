@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Bootstrap a fresh Lambda Labs instance for training.
-# Mirrors the proven inference runbook (docs/env-setup.md): stable cu126 torch,
-# NOT the nightly the upstream repo pins. Run once per new instance.
+# Uses the proven stable cu126 torch, NOT the nightly the upstream repo pins
+# (the nightly is unstable; this wheel is tested on H100 80GB). Run once per
+# new instance.
 #
 # Put data/cache/checkpoints on a PERSISTENT filesystem so they survive instance
 # termination (Lambda's local disk does not).
@@ -19,7 +20,8 @@ source "$PERSIST/venv/bin/activate"
 python -m pip install --upgrade pip
 
 # Stable torch built for CUDA 12.6 (proven on H100 PCIe 80GB), installed BEFORE
-# the package so this wheel wins over PyPI's default resolution.
+# the package so this cu126 wheel wins over PyPI's default resolution. The version
+# must match the torch pin in pyproject.toml (kept here only to apply the index).
 pip install torch==2.7.0 --index-url "$CUDA_INDEX"
 
 # Everything else (datasets, tiktoken, huggingface-hub, pyyaml, numpy, ...).
