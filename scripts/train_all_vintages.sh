@@ -27,17 +27,8 @@ for Y in "${YEARS[@]}"; do
     echo "==================  $NAME  (base manelalab/chrono-gpt-v1-$CUTOFF)  =================="
 
     # Derive a per-vintage config from the base (robust YAML edit, not sed).
-    python - "$BASE_CFG" "$CFG" "$CUTOFF" "$OUT" "$HF_USER" <<'PY'
-import sys, yaml
-base, out, cutoff, outdir, hf = sys.argv[1:6]
-cfg = yaml.safe_load(open(base))
-cfg["model_repo"] = f"manelalab/chrono-gpt-v1-{cutoff}"
-cfg["output_dir"] = outdir
-cfg.setdefault("push_to_hub", {})
-cfg["push_to_hub"]["repo_id"] = f"{hf}/chrono-instruct-v1-{cutoff}"
-yaml.safe_dump(cfg, open(out, "w"), sort_keys=False)
-print("wrote", out)
-PY
+    python scripts/make_vintage_config.py --base "$BASE_CFG" --out "$CFG" \
+        --cutoff "$CUTOFF" --output-dir "$OUT" --hf-user "$HF_USER"
 
     chrono train --config "$CFG"
     bash scripts/publish_results.sh "$OUT" "$NAME" || echo "WARN: publish failed for $NAME (continuing)"

@@ -8,11 +8,16 @@
 # Same entrypoint as everything else; SLURM just picks the vintage by array index.
 set -euo pipefail
 
+PERSIST="${PERSIST:-$HOME/persist}"
+HF_USER="${HF_USER:-HZ0619}"
+BASE_CFG="${BASE_CFG:-configs/train.yaml}"
+
 VINTAGES=(1999 2005 2010 2015 2020 2024)
 year="${VINTAGES[$SLURM_ARRAY_TASK_ID]}"
 
 cfg="configs/_vintage_${year}.yaml"
-sed "s|chrono-gpt-v1-2020|chrono-gpt-v1-${year}|g; s|chrono-instruct-2020|chrono-instruct-${year}|g" \
-  configs/train.yaml > "$cfg"
+out="$PERSIST/runs/chrono-instruct-${year}"
+python scripts/make_vintage_config.py --base "$BASE_CFG" --out "$cfg" \
+  --cutoff "${year}1231" --output-dir "$out" --hf-user "$HF_USER"
 
 srun chrono train --config "$cfg"
