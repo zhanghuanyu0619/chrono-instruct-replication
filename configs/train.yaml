@@ -22,7 +22,7 @@ grad_checkpoint: true        # recompute blocks in backward: ~10x less activatio
                              # Lets batch_size 8 fit one 80GB card. Set false only if memory is ample.
 warmup_ratio: 0.03
 weight_decay: 0.0
-grad_clip: null              # null = no clipping (grad norm still logged); set e.g. 1.0 to clip
+grad_clip: 1.0               # clip grad-norm to this (standard SFT value); null = off (norm still logged)
 val_fraction: 0.05
 log_every: 20                # train metrics (loss, lr, grad_norm, tok/s, VRAM) logged every N steps
 eval_every: 200              # periodic in-stage validation -> a real val curve (like the paper's Fig 1)

@@ -35,3 +35,29 @@ def test_training_step_decreases_loss():
         losses.append(loss.item())
 
     assert losses[-1] < losses[0]  # the loop actually learns on a fixed batch
+
+
+def test_kv_cache_matches_full_forward():
+    """Incremental KV-cached decoding must match the full-sequence forward.
+
+    Feeds a sequence one token at a time with a `past` cache and checks the
+    per-position logits (and the greedy argmax at every position) equal a single
+    full-sequence pass — i.e. the cache is a pure speedup, not a behavior change.
+    """
+    torch.manual_seed(0)
+    vocab, T = 512, 16
+    model = build_tiny(vocab_size=vocab)
+    model.eval()
+    ids = torch.randint(0, vocab, (1, T))
+
+    with torch.no_grad():
+        full, _ = model(ids, return_hidden=False)              # one parallel pass
+        past, steps = [None] * len(model.blocks), []
+        for t in range(T):                                     # one token at a time
+            lg, past = model(ids[:, t : t + 1], return_hidden=False, past=past)
+            steps.append(lg[:, -1, :])
+        cached = torch.stack(steps, dim=1)
+
+    assert cached.shape == full.shape
+    assert torch.equal(full.argmax(-1), cached.argmax(-1))     # identical greedy choices
+    assert torch.allclose(full, cached, atol=1e-2)             # logits match (bf16 internals)

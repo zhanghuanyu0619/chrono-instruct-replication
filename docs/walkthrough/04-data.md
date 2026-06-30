@@ -503,3 +503,53 @@ To avoid a silent train/val leak. If you packed first and split blocks afterward
 
 **Q6. The Tulu stage was collapsing from ~357k to ~32k. What was the root cause?**
 A parsing bug, not a data or threshold problem. The `label` column is stored as valid JSON for scratch/self-instruct but as **single-quoted Python dict reprs** for Tulu, which `json.loads` rejects. The original JSON-only parser silently dropped every Tulu row (the screen fails closed). The fix in `_parse_label` is an `ast.literal_eval` fallback, with the `except` catching both `ValueError` and `SyntaxError`. After the fix, Tulu recovered to 356,886 and the total to 425,119, matching the paper. This is the file's most consequential bug — it is the difference between a faithful replication and a quietly broken one.
+
+---
+
+## Addendum (2026-06): why we pack — throughput, not "padding corrupts attention"
+
+An earlier framing (and `implementation-notes.md` §4, now corrected) justified
+packing by saying the model has no attention mask, so pad tokens "would corrupt
+attention." For this model that reasoning is **overstated**, and it's worth getting
+right because the distinction is exactly the kind of thing an expert would probe.
+
+**You never *need* to fill the context window.** A transformer processes any length
+`T ≤ block_size`. A 50-token example can be a single length-50 forward pass. Filling
+to 1792 is never a *modeling* requirement.
+
+**Padding exists only for *batching*.** To run `B` sequences in one forward pass you
+must stack them into a rectangular `(B, T)` tensor; tensors can't have ragged rows,
+so the short ones are padded up to a common `T`. With batch size 1 you'd need no
+padding at all. Padding is a tensor-shape device, not a model requirement.
+
+**`-100` labels handle the *loss*; the worry is *attention contamination* — and for
+a causal, right-padded model it doesn't happen.** Put the filler at the **end**: a
+real token at position `i` attends only to positions `≤ i` (causal mask), which are
+all real tokens. The trailing pad sits at positions `> i`, so real tokens **never
+attend to it**; only the pad positions' own outputs are polluted, and those are
+discarded (`-100` + we never read their predictions). Every per-position op here
+(RMSNorm, RoPE, value embeddings, U-net skips) preserves this. So right-padding
+would be **correct**, even without an attention mask. (The contamination worry is
+real for *left*-padding or *bidirectional* models like BERT — not here.)
+
+**So why pack? Efficiency.** Right-padding short examples to 1792 wastes almost all
+the compute on pad tokens — Stage-1 examples average ~102 tokens, so ~94% of every
+forward would be filler. Packing concatenates real examples (separated by `EOT`) to
+fill each block with real tokens, so ~100% of the compute is useful — often a
+several-fold speedup. The price is the two costs in Q3/Q4: ~5% of long Tulu examples
+are **split** across a boundary, and a packed block allows mild **cross-example
+attention** across the `EOT` (a later example can attend to an earlier one —
+something padding would avoid).
+
+**The honest three-way summary:**
+
+| Approach | Correct? | Compute waste | Downside |
+|---|---|---|---|
+| One example per forward (batch 1) | yes | none | tiny batches, poor GPU use, slow |
+| Right-pad to `block_size` + `-100` | yes (causal) | high (pad tokens) | wasted compute |
+| **Packing (what we do)** | yes | ~none | ~5% examples split; mild cross-example attention |
+
+We pack purely for throughput. `-100` already handles the loss; padding is only
+about batching; and for this causal model padding wouldn't even corrupt the real
+tokens — packing simply wins on speed. See `03-model.md` (Addendum) for the
+causal-mask mechanics and `implementation-notes.md` §4.

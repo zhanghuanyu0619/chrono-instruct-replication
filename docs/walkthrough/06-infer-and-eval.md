@@ -764,9 +764,58 @@ cutoff** (it learned the history it was allowed to see) and **incorrect after**
 off that 2×2 pattern. Getting the future rows *wrong* is the positive result — it
 is the direct evidence of no lookahead bias.
 
-**6. Why does generation recompute the whole sequence each step instead of caching?**
-`model.py` deliberately dropped the KV-cache branch to keep the training path
-clean (`implementation-notes.md` §6), so `generate` re-runs the full sequence
-every token (A3, line 48). It is slower but simpler and matches the original model
-card's demo. For eval this is irrelevant — completions are 2-256 tokens — and it
-keeps one code path for both training and inference.
+**6. Does generation use a KV cache?**
+Yes — as of the 2026-06 update, `generate` uses an optional KV cache by default
+(`use_cache=True`), feeding one token at a time instead of recomputing the full
+sequence (O(T) vs O(T²)); pass `use_cache=False` for the old full-recompute path,
+which it is numerically equivalent to. See the Addendum below and `03-model.md`
+(Addendum) for the mechanism. For the eval tests this barely matters (completions
+are 2–256 tokens), but it speeds up long generations like AlpacaEval.
+
+---
+
+## Addendum (2026-06): decoding defaults, parity with Manela, KV cache, pooling
+
+Three clarifications and the behavior changes that came with them.
+
+**Decoding defaults now match Manela's `ChronoGPT_instruct.py`.** That file's
+`generate(..., temperature=0.0, top_k=None)` is **greedy** (argmax) by default, and
+its `extract_response` calls it with `temperature=0.0`. Our `generate` now defaults
+to `top_k=None, temperature=0.0` too — so `chrono infer` is greedy/deterministic by
+default, matching the original. Set `temperature>0` (optionally with `top_k`) to
+sample.
+
+| | Manela's default | our `infer.generate` default | our eval tasks |
+|---|---|---|---|
+| Decoding | greedy (argmax) | **greedy** (argmax) | greedy (`top_k=1`) |
+
+The paper-replication evals (`president_test`, `major_events_test`,
+`alpaca_outputs`) all pass `top_k=1`, so they were already greedy and match the
+original — only the interactive default changed.
+
+**`temperature=0` is now safe.** The old loop did `logits / temperature`
+unconditionally, so `temperature=0` would divide by zero → NaN; greedy was only
+reachable via `top_k=1`. The new `_next_token` helper branches to `argmax` **before**
+any division when `temperature == 0` *or* `top_k == 1`. So both routes to greedy now
+work, matching Manela's explicit `temperature==0 → argmax` branch.
+
+**KV cache (the speed fix).** `generate` threads a `past` cache through the model
+(`use_cache=True` default): the prompt is processed once (prefill), then each step
+feeds only the newly generated token. See `03-model.md` (Addendum) for the Rotary
+offset / `is_causal` mechanics and the parity test. This replaces the old "recompute
+the whole sequence every token" behavior; `use_cache=False` restores it.
+
+**Why `embed` mean-pools instead of taking the last token.** Under causal attention,
+only the **last** token's hidden state has attended to the whole sequence — so
+last-token pooling (`pool="last"`, `h[-1]`) is a legitimate choice and is offered.
+But the default is **mean over the token dimension** (`h.mean(0)` of one layer's
+`(T, model_dim)` states, default `layer=-1`), for three reasons: (1) in a base /
+generative model the final-layer last-token state is optimized to predict the *next
+token*, not to summarize the sequence, so it can be a poor global summary; (2) mean
+pooling aggregates evidence across all positions instead of betting on one;
+(3) variance reduction. It is a **design choice, not a correctness fact** — the best
+option is empirical. Two practical notes for downstream return-prediction use:
+`pool="last"` is one line away, and the **last layer is often not the best for
+embeddings** (it's specialized for the logit head) — a middle layer (`layer=-4`-ish)
+frequently gives stronger general-purpose representations. Worth A/B testing
+{mean, last} × {last layer, middle layer} on your actual target.

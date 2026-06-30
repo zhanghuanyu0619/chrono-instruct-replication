@@ -862,3 +862,51 @@ comments out, because `embed()` needs it — a strict superset, not a change to 
 (packing and why there is no padding), `05-train.md` (training loop, mixed
 precision, gradient checkpointing in context), `docs/implementation-notes.md`
 §§4–7 (design rationale).*
+
+---
+
+## Addendum (2026-06): the KV cache, and why training can't use one
+
+The model now exposes an **optional KV cache** via a `past` argument to `forward`
+(off by default). This is purely an inference speedup; understanding it also
+clarifies a common confusion about training.
+
+**What a KV cache is.** During autoregressive generation you emit tokens one at a
+time. Without a cache, generating the *t*-th token re-runs attention over the whole
+growing prefix, so producing `T` tokens costs `O(T²)` work per layer. A KV cache
+stores each past token's keys and values (`(k, v)` per block) so each new step only
+computes the **one** new token's query against the cached keys — `O(T)` total. For
+long generations this is commonly a 5–20× speedup.
+
+**How it's wired here (three touch-points):**
+- `Rotary.forward(x, offset=0)` — the new token sits at absolute position
+  `past_len`, so RoPE is applied with that offset (otherwise a length-1 input would
+  wrongly get position-0 angles).
+- `CausalSelfAttention.forward(x, ve, past, use_cache)` — appends the new `k,v` to
+  the cached ones and returns the updated cache. `is_causal=(past_len == 0)`: the
+  initial *prefill* (whole prompt, no past) needs the causal mask; a single-token
+  decode step has one query that should see **all** cached positions, so no mask.
+- `ChronoGPT.forward(inputs, return_hidden=False, past=...)` — threads one cache
+  slot per block. With `past=None` (training/eval) the code path is byte-identical
+  to before; the U-net skip connections work unchanged because they are per-position
+  (each step's new position gets its own encoder skip).
+
+`tests/test_smoke.py::test_kv_cache_matches_full_forward` asserts the cached path
+reproduces the full-sequence logits (and every greedy argmax) — a speedup, not a
+behavior change.
+
+**Why training fundamentally cannot use a KV cache.** A KV cache only helps when you
+generate *sequentially* and would otherwise recompute the prefix. Training does no
+such thing: under **teacher forcing**, the entire target sequence is fed in **one**
+forward pass and the loss is computed at **all** positions at once (the causal mask
+ensures position *t* only sees ≤ *t*). There are no sequential steps, so every
+token's `k,v` is already computed exactly once — nothing to cache or reuse. (Two more
+reasons it's moot: backprop needs the full activation graph anyway, and the weights
+change every optimizer step, so any cached `k,v` would be instantly stale.) The cache
+lives only in `infer.generate`; see `06-infer-and-eval.md`.
+
+**A causal-masking subtlety worth knowing.** Because attention here is causal, the
+"the model has no padding mask, so we must pack" story is more nuanced than it
+sounds — *right*-padding would actually be safe (trailing pad never enters a real
+token's attention). The real reason we pack is throughput, not correctness. That
+argument lives in `04-data.md` (Addendum) and `docs/implementation-notes.md` §4.

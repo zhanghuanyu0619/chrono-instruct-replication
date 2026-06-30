@@ -67,16 +67,26 @@ GPT-4.1 classifier marked `label 0` ("pre-2000") with `confidence 10`
   **Fix:** `_parse_label` now falls back to `ast.literal_eval`, so all three
   stages screen on their real verdict. This was the cause of the 100k-vs-425k gap.
 
-## 4. Packing into fixed blocks — chosen because the model has no padding mask · Settled mechanism, Pending refinement
+## 4. Packing into fixed blocks — chosen for throughput, not correctness · Settled mechanism, Pending refinement
 
 `pack_blocks` concatenates tokenized examples (each followed by `EOT`) into a
 buffer and slices `block_size` (1792) chunks — the pretraining / TRL
 `ConstantLengthDataset` convention, **not** Alpaca (which pads one example per
 sequence).
 
-- Why not pad like Alpaca: **ChronoGPT's `forward` takes only `input_ids`, no
-  attention mask** (causal-only), so padding tokens cannot be masked out — they
-  would corrupt attention. Packing avoids padding entirely. See §6.
+- Why pack instead of pad: **efficiency, not a correctness requirement** (an
+  earlier version of this note said padding "would corrupt attention" — that is
+  overstated; see the correction below). The model's `forward` takes only
+  `input_ids` with no attention mask, but with **right**-padding and a causal
+  mask, real tokens at positions `< L` attend only to positions `<= their index`,
+  which are all real — so trailing pad tokens never enter any real token's
+  attention, and `-100` labels keep them out of the loss. Right-padding would
+  therefore be *correct*; it is just **wasteful**: Stage-1 examples average ~102
+  tokens, so padding each to 1792 spends ~94% of every forward on pad tokens.
+  Packing fills each block with real tokens instead (near-100% useful compute) —
+  a multi-fold training speedup. (The "no attention mask" point still matters for
+  *left*-padding or bidirectional models, where pad **would** contaminate; we
+  simply never pad.) See §5, §6.
 - **Known costs (your review caught these):**
   1. Examples that exceed a block boundary are **split** across two blocks (the
      loss mask is carried, so no response tokens are dropped, but the model never
