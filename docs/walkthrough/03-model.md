@@ -928,3 +928,207 @@ lives only in `infer.generate`; see `06-infer-and-eval.md`.
 sounds — *right*-padding would actually be safe (trailing pad never enters a real
 token's attention). The real reason we pack is throughput, not correctness. That
 argument lives in `04-data.md` (Addendum) and `docs/implementation-notes.md` §4.
+
+---
+
+## Addendum II (2026-06): normalization & backprop, `c_proj`, RoPE — with a worked example
+
+Four follow-up questions, answered with the mechanics first and then one fully
+worked numerical pass through an attention sublayer.
+
+### A. How RMSNorm shapes the *backward* pass
+
+`norm(x)` here is `F.rms_norm(x, (d,))` with no learnable gain:
+
+$$y = \frac{x}{r}, \qquad r = \sqrt{\tfrac{1}{d}\textstyle\sum_j x_j^2} = \frac{\lVert x\rVert}{\sqrt d}.$$
+
+Its Jacobian (what the chain rule multiplies the incoming gradient by) is
+
+$$\frac{\partial y}{\partial x} = \frac{1}{r}\Big(I - \tfrac{1}{d}\, y\,y^{\top}\Big).$$
+
+Two things fall out of that one expression, and they are *why* normalization helps
+training:
+
+1. **The `1/r` factor is an automatic gradient regulator.** Gradients flowing back
+   through the norm are scaled by `1/r`. If a layer's activations grow large
+   (`r` big), the backward signal is *damped*; if they shrink, it is *amplified*.
+   Across 52 layers this keeps gradient magnitudes in a healthy band and is a major
+   reason deep transformers don't explode/vanish during backprop.
+2. **The `(I − yyᵀ/d)` term projects out the radial direction.** It removes the
+   component of the incoming gradient that points along `y` (the current activation
+   direction). The reason is exact: `y` is *invariant* to the length of `x`
+   (scaling `x → cx` leaves `y` unchanged), so the loss genuinely *cannot* depend on
+   `‖x‖` — there is no gradient in that direction. The model can only learn to move
+   the **direction** of `x`, never its length. That deletes a redundant,
+   ill-conditioned degree of freedom and makes the optimization landscape better
+   conditioned. *Finance analogy:* it's like standardizing regressors before a
+   regression — you strip out a nuisance scale so the optimizer isn't fighting an
+   ill-conditioned Hessian.
+
+Two placement facts compound this. **Pre-norm** (norm sits *inside* each block's
+branch; the residual skip is added un-normalized — see `Block.forward`) gives the
+gradient a clean identity "highway" straight down the residual stream, which is the
+standard trick for training very deep transformers. And **QK-norm** (normalizing
+`q` and `k` *before* the dot product) bounds the attention logits, so the softmax
+can't saturate — a saturated softmax has near-zero gradient, so this protects the
+backward pass *through attention* specifically.
+
+### B. What `c_proj` is
+
+`c_proj` ("channel projection") is the **output / down projection** — a bias-free
+linear layer (`CastedLinear`, which just casts its weight to the input's dtype on
+the fly). It appears in two places with the same role — *recombine and write back*:
+
+- **In attention** it is the `W_O` of standard attention notation, shape
+  `dim → dim`. Each head produces its own `head_dim` outputs in a disjoint
+  subspace; `c_proj` linearly **mixes all heads together and maps the result back
+  into the residual-stream coordinate system**. Without it, head outputs would be
+  stranded in fixed, un-mixable coordinates.
+- **In the MLP** it is the `4·dim → dim` down-projection that brings the widened
+  hidden layer back to model width.
+
+**Initialization matters here.** In this code the **MLP's `c_proj` and the
+`lm_head` are zero-initialized** (`...weight.data.zero_()`), while the attention
+`c_proj` uses standard init. Zero-init means that *at the start of training* each
+block's MLP contributes exactly **0** and the logits are 0 (→ uniform
+distribution): the network starts as a clean stack of identity residuals and each
+block "turns on" gradually as `c_proj` learns. This is the "zero-init projections"
+line in the architecture summary, and it is a stability trick, not a quirk.
+
+### C. RoPE: a rotation of `q`/`k` per layer — not an added embedding
+
+The direct answers to your question:
+
+- **It is *not* added to the embeddings (unlike BERT / learned absolute positions).**
+  Nothing is summed into the token embeddings and nothing is added to the residual
+  stream. There is no "position vector."
+- **Instead, inside *every* attention layer, the query and key vectors are
+  *rotated* by an angle proportional to the token's position**, applied per head,
+  per position, *after* the `c_q`/`c_k` projections and QK-norm, *before* the `q·k`
+  score (see `CausalSelfAttention.forward`: `q, k = self.rotary(q), self.rotary(k)`).
+  **Values `v` are NOT rotated**, and the residual stream is not rotated.
+
+**Does the rotation scramble the word-embedding information? No — by construction:**
+
+1. **It touches only `q` and `k`** — the *matching* vectors used to compute
+   attention weights — not `v`, the *content* that gets aggregated and written back
+   to the stream. So the information being transported forward is never rotated.
+2. **A rotation is orthogonal**: it preserves vector norms and inner products and is
+   perfectly invertible. Position is *encoded into the geometry*, not destroyed.
+3. **Only half the dimensions actually rotate.** In `Rotary.__init__`,
+   `angular_freq` is `dim//4` real frequencies *concatenated with* `dim//4` zeros,
+   so half the rotation-pairs have angle 0 and pass through **unchanged** — pure,
+   position-independent content channels.
+4. The `c_q`/`c_k` projections are *learned in the presence of* the rotation, so the
+   model allocates feature dimensions knowing rotation will be applied.
+
+**The payoff — relative position.** Because the rotation `R` is orthogonal,
+`⟨R_m q, R_n k⟩ = ⟨q, R_{n−m} k⟩`: the attention score between a query at position
+`m` and a key at position `n` depends only on their **relative** offset `n − m` and
+the content — never on absolute position. Different frequencies rotate at different
+rates, so they encode distance at different scales (a harmonic / Fourier code of
+position).
+
+### D. Worked example: one attention sublayer, by the numbers
+
+A tiny model so every number is checkable: `model_dim = 4`, `1` head,
+`head_dim = 4`, two tokens **A** (position 0) and **B** (position 1). With
+`head_dim = 4`, `Rotary` builds `dim//4 = 1` real frequency `f = 1.0` plus one zero,
+so dimension-pair **{0,2} rotates** and pair **{1,3} never rotates**. Attention
+scale is `1/√head_dim = 0.5`. At init the block lambdas are `[1, 0]` and the
+attention lambdas are `[0.5, 0.5]`; take this to be a middle layer so the value
+embedding `ve` is `None`. (Real RoPE uses many tiny-angle frequencies; we use
+`θ = 1` radian, `cos 1 = 0.540`, `sin 1 = 0.841`, so the rotation is visible.)
+
+Two "orthogonal" input words on the residual stream:
+
+```
+x_A = [3, 0, 0, 0]      # token A, position 0
+x_B = [0, 0, 3, 0]      # token B, position 1
+```
+
+**Step 1 — x0 mix (`Block.forward`).** `x = 1.0·x + 0.0·x0 = x` (lambdas `[1,0]` at
+init), so unchanged.
+
+**Step 2 — pre-attention RMSNorm.** `r_A = √(9/4) = 1.5` → `x̂_A = [2,0,0,0]`;
+likewise `x̂_B = [0,0,2,0]`. (Norm rescaled the magnitude 3 → 2; RMS is now 1. This
+is the forward side of section A.)
+
+**Step 3 — q, k, v.** Use identity projections for illustration, so `q = k = v = x̂`.
+The value blend with `ve = None` is `v ← lambdas[0]·v = 0.5·v`:
+
+```
+q_A = [2,0,0,0]   k_A = [2,0,0,0]   v_A = [1,0,0,0]
+q_B = [0,0,2,0]   k_B = [0,0,2,0]   v_B = [0,0,1,0]
+```
+
+**Step 4 — QK-norm.** `norm([2,0,0,0]) = [2,0,0,0]` (already RMS 1) — unchanged here,
+but in general this is what bounds the logits.
+
+**Step 5 — RoPE on q, k (NOT v).** A is at position 0 → angle 0 → unchanged. B is at
+position 1 → rotate pair {0,2} by `θ = 1`, pair {1,3} by 0:
+
+```
+dim0' = dim0·cosθ + dim2·sinθ = 0·0.540 + 2·0.841 = 1.683
+dim2' = −dim0·sinθ + dim2·cosθ = −0      + 2·0.540 = 1.081
+q_B = k_B = [1.683, 0, 1.081, 0]
+```
+
+Notice: *before* rotation `q_B = [0,0,2,0]` was **orthogonal** to `k_A = [2,0,0,0]`
+(dot product 0) — B could not "see" A at all on content. The rotation tilted a
+component of `q_B` into dimension 0, creating overlap with `k_A`. That overlap is
+**pure position** (distance 1), injected by RoPE — and note dims {1,3} would have
+carried position-independent *content* matching, untouched.
+
+**Step 6 — attention scores (×0.5), causal.**
+A (pos 0) sees only A: `score(A,A) = 0.5·(2·2) = 2` → softmax → `1.0` →
+`out_A = v_A = [1,0,0,0]`.
+B (pos 1) sees A and B:
+
+```
+score(B,A) = 0.5·(q_B · k_A) = 0.5·(1.683·2)               = 1.683
+score(B,B) = 0.5·(q_B · k_B) = 0.5·(1.683² + 1.081²)        = 2.000
+softmax([1.683, 2.000]) = [0.421, 0.579]
+out_B = 0.421·v_A + 0.579·v_B = [0.421, 0, 0.579, 0]
+```
+
+**Step 7 — `c_proj` (the `W_O` output projection).** Take a simple content-mixing
+matrix to see it recombine the channels:
+
+```
+        [0.5 0 0.5 0]
+W_O  =  [ 0  1  0  0]            W_O · out_B = [0.5, 0, 0.5, 0]
+        [0.5 0 0.5 0]
+        [ 0  0  0  1]
+```
+
+`c_proj` blended the two content channels (dim 0 carried A's value, dim 2 carried
+B's) and wrote the mixed result back into residual-stream coordinates.
+
+**Step 8 — residual add (to the *un-normalized* `x_B`).**
+
+```
+x_B  ←  x_B + W_O·out_B = [0,0,3,0] + [0.5,0,0.5,0] = [0.5, 0, 3.5, 0]
+```
+
+**Step 9 — MLP sublayer (schematic).**
+`x ← x + c_proj_mlp( relu(c_fc(norm(x)))² )`. Because the MLP's `c_proj` is
+**zero-initialized** (section B), at the start of training this term is exactly
+`[0,0,0,0]` — the block's only update early on is the attention term above. As the
+MLP's `c_proj` learns nonzero weights, this contribution grows.
+
+**What the numbers show, mapped back to the questions:**
+- **Normalization** (steps 2, 4) rescaled magnitudes to a common ~1 RMS; its
+  Jacobian feeds that back as the `1/r`-damped, radial-direction-removed gradient of
+  section A.
+- **RoPE** (step 5) left A (pos 0) alone, rotated B, and the rotation is precisely
+  what let B attend to A *by distance*; the non-rotating pair and the un-rotated
+  values mean content is never scrambled.
+- **`c_proj`** (step 7) recombined the attention output and wrote it back into the
+  residual stream — its whole job.
+
+---
+
+*Cross-references for this addendum: `01-ml-primer.md` (RMSNorm, attention, softmax
+basics), `05-train.md` (how these gradients drive AdamW), and Sections 4–7 above for
+the line-by-line of `CausalSelfAttention`, `MLP`, `Rotary`, and `Block`.*
