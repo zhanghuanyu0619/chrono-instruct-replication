@@ -453,12 +453,13 @@ one optimizer step. At the boundary:
   of all gradients and, if it exceeds the threshold, scales every gradient down so
   the norm equals the threshold. This caps the size of a single update,
   protecting against the occasional exploding gradient that would otherwise
-  corrupt the weights. The clever bit: `grad_clip or 1e30` — if `grad_clip` is
-  `None` (the config default), the threshold is effectively infinite (`1e30`), so
-  **no clipping happens**, but the function *still returns the true gradient
-  norm*, which we capture in `grad_norm` for logging. So we always *monitor*
-  `|g|` even when we do not *clip* it. (Watching `|g|` is itself a useful
-  diagnostic — a spiking grad norm is an early warning of instability.)
+  corrupt the weights. The config default is now **`grad_clip: 1.0`** (the
+  standard SFT value), so clipping is active. The `grad_clip or 1e30` idiom is the
+  off-switch: if you set `grad_clip: null`, the threshold becomes effectively
+  infinite (`1e30`), so **no clipping happens** — but the function *still returns
+  the true gradient norm*, which we capture in `grad_norm` for logging. So we
+  always *monitor* `|g|` whether or not we clip it. (Watching `|g|` is itself a
+  useful diagnostic — a spiking grad norm is an early warning of instability.)
 - **Set the LR (lines 108–110).** Compute the scheduled LR for this step and write
   it into every Adam parameter group. This is how `cosine_lr` actually drives the
   optimizer — AdamW does not know about schedules; we override `group["lr"]`

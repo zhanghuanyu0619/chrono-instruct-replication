@@ -41,9 +41,10 @@ re-derived.
  1  """Inference: unified generation + embedding extraction for any vintage.
  2
  3  The model's forward returns (logits, layer_outputs), so both modalities share
- 4  one load path. Generation recomputes the full sequence each step (no KV cache),
- 5  matching the original model card's demo.
- 6  """
+ 4  one load path. Generation uses an optional KV cache (use_cache=True, default) to
+ 5  decode one token at a time; pass use_cache=False to fall back to full-sequence
+ 6  recompute (the original model card's demo behavior).
+ 7  """
  7  import torch
  8  import torch.nn.functional as F
  9  import tiktoken
@@ -156,34 +157,52 @@ This is the heart of the file and the one piece worth reading slowly if
 generation is new to you.
 
 ```python
-33  @torch.no_grad()
-34  def generate(model, device, prompt, max_new_tokens=128, top_k=50, temperature=1.0, seed=123,
-35               return_completion=False):
-36      """Sample a continuation of `prompt`. top_k=1 makes it greedy/deterministic.
-37
-38      Returns the full decoded text (prompt + completion) by default; with
-39      return_completion=True it decodes only the newly generated tokens — sliced by
-40      TOKEN count, not by prompt string length, so extraction is exact regardless of
-41      tokenizer round-trip whitespace quirks.
-42      """
-43      ids = torch.tensor(ENC.encode(prompt), dtype=torch.long, device=device).unsqueeze(0)
-44      n_prompt = ids.shape[1]
-45      rng = torch.Generator(device=device).manual_seed(seed)
-46      for _ in range(max_new_tokens):
-47          with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
-48              logits, _ = model(ids)
-49          logits = logits[:, -1, :] / temperature
-50          probs = F.softmax(logits, dim=-1)
-51          topk_p, topk_i = torch.topk(probs, top_k, dim=-1)
-52          nxt = torch.gather(topk_i, -1, torch.multinomial(topk_p, 1, generator=rng))
-53          if nxt.item() == ENC.eot_token:
-54              break
-55          ids = torch.cat([ids, nxt], dim=1)
-56      out_ids = ids[0, n_prompt:] if return_completion else ids[0]
-57      return ENC.decode(out_ids.tolist())
+34  def _next_token(logits, top_k, temperature, rng):
+35      """Pick the next id from the last step's logits[B, V]. Greedy when
+        temperature == 0 OR top_k == 1 (argmax, taken BEFORE any division -> temp=0
+        is safe); else temperature scaling + optional top-k sampling. [docstring abridged]"""
+42      if temperature == 0.0 or top_k == 1:
+43          return logits.argmax(dim=-1, keepdim=True)
+44      logits = logits / temperature
+45      if top_k is not None:
+46          v, _ = torch.topk(logits, min(top_k, logits.size(-1)), dim=-1)
+47          logits = logits.masked_fill(logits < v[:, [-1]], float("-inf"))
+48      probs = F.softmax(logits, dim=-1)
+49      return torch.multinomial(probs, 1, generator=rng)
+
+52  @torch.no_grad()
+53  def generate(model, device, prompt, max_new_tokens=128, top_k=None, temperature=0.0, seed=123,
+54               return_completion=False, use_cache=True):
+55      """Generate a continuation of `prompt`. Defaults match manelalab's
+        ChronoGPT_instruct.py: temperature=0.0 is GREEDY (argmax), top_k=None.
+        use_cache=True threads a KV cache so each step feeds only the new token
+        (O(T) vs O(T^2)); numerically equal to use_cache=False. [docstring abridged]"""
+71      ids = torch.tensor(ENC.encode(prompt), dtype=torch.long, device=device).unsqueeze(0)
+72      n_prompt = ids.shape[1]
+73      rng = torch.Generator(device=device).manual_seed(seed)
+74      past = [None] * len(model.blocks) if use_cache else None
+75      step_in = ids  # full prompt on the first pass; then just the new token when caching
+76      for _ in range(max_new_tokens):
+77          with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
+78              if use_cache:
+79                  logits, past = model(step_in, return_hidden=False, past=past)
+80              else:
+81                  logits, _ = model(ids, return_hidden=False)
+82          nxt = _next_token(logits[:, -1, :], top_k, temperature, rng)
+83          if nxt.item() == ENC.eot_token:
+84              break
+85          ids = torch.cat([ids, nxt], dim=1)
+86          step_in = nxt
+87      out_ids = ids[0, n_prompt:] if return_completion else ids[0]
+88      return ENC.decode(out_ids.tolist())
 ```
 
-**`@torch.no_grad()` (line 33).** Tells PyTorch not to build the autograd graph
+> Note: the two docstrings are abridged in the quote above with `[docstring
+> abridged]`; the signatures and bodies are exact. The 2026-06 update split token
+> selection into the `_next_token` helper and added the optional KV cache — see
+> also the Addendum at the end of this doc.
+
+**`@torch.no_grad()` (line 52).** Tells PyTorch not to build the autograd graph
 (the bookkeeping needed to compute gradients for training). At inference we never
 call `.backward()`, so this saves memory and time. Every function in these two
 files that runs the model is wrapped this way.
@@ -192,70 +211,63 @@ files that runs the model is wrapped this way.
 in one shot. It predicts *one* next token given everything so far, you append
 that token, and feed the longer sequence back in to predict the *next* one. Like
 forecasting a time series one step ahead, then rolling the realized value into
-the information set and forecasting again. The loop on line 46 is exactly that
+the information set and forecasting again. The loop on line 76 is exactly that
 roll-forward.
 
 Now line by line:
 
-- **Line 43 — tokenize the prompt.** `ENC.encode(prompt)` turns the prompt string
-  into a list of token ids. `torch.tensor(..., dtype=torch.long, device=device)`
-  makes it an integer tensor on the model's device. `.unsqueeze(0)` adds a leading
-  *batch* dimension, turning shape `(T,)` into `(1, T)` — the model expects a batch
-  of sequences, and here the batch is a single sequence. So `ids` has shape
-  `(1, n_prompt)`.
-- **Line 44 — `n_prompt`** records how many tokens the prompt was. Used at the end
-  to slice off the prompt and keep only what the model generated.
-- **Line 45 — the RNG.** `torch.Generator(...).manual_seed(seed)` creates a
-  dedicated random-number generator with a fixed seed. Sampling (line 52) draws
-  from it, so a given `(prompt, seed)` reproduces the same continuation. (With
-  `top_k=1` sampling is deterministic anyway — see below — so the seed only
-  matters when you actually sample.)
-- **Line 46 — the loop** runs at most `max_new_tokens` times. Each iteration adds
-  one token (or breaks early on end-of-text).
-- **Lines 47-48 — one forward pass.** `with torch.autocast(..., dtype=bfloat16)`
-  runs the matrix multiplies in 16-bit for speed/memory. `model(ids)` returns
-  `(logits, layer_outputs)`; we keep `logits` and discard the hidden states with
-  `_`. `logits` has shape `(1, T, vocab_size)` — for *every* position `t` in the
-  sequence, a score for every possible next token. Note the model recomputes the
-  *whole* sequence every step (no KV cache; see the module docstring and
-  `implementation-notes.md` §6). That is simpler and matches the original model
-  card, at the cost of speed — fine for short eval completions.
-- **Line 49 — take the last position, apply temperature.** `logits[:, -1, :]`
-  keeps only position `-1` (the last token), since that is the distribution over
-  *the next* token. Shape becomes `(1, vocab_size)`. Dividing by `temperature`
-  rescales the scores: `temperature < 1` sharpens (more confident),
-  `> 1` flattens (more random); `1.0` (the default) leaves them unchanged.
-  - A subtlety worth knowing for fidelity to the paper: the model already applies
-    a *logit softcap* inside `forward` — `logits = 15 * torch.tanh(logits / 15)`
-    (`model.py:187`). That squashes raw logits into roughly `(-15, 15)` to keep
-    them numerically tame. So the `logits` you get here are already softcapped;
-    temperature scales them after that.
-- **Line 50 — softmax → probabilities.** `F.softmax` exponentiates and
-  normalizes the logits so they sum to 1: now `probs[i]` is the model's
-  probability that token `i` comes next.
-- **Line 51 — top-k truncation.** `torch.topk(probs, top_k)` keeps only the `k`
-  most-probable tokens, returning their probabilities `topk_p` and their vocab
-  indices `topk_i`. This is *top-k sampling*: we will only ever pick from these
-  `k` candidates, never the long tail of implausible tokens.
-- **Line 52 — sample one token.**
-  `torch.multinomial(topk_p, 1, generator=rng)` draws one index *into the
-  top-k list*, with probability proportional to `topk_p` (so more likely tokens
-  are picked more often). `torch.gather(topk_i, -1, ...)` translates that
-  position back into the actual vocab id. Result `nxt` has shape `(1, 1)`.
-  - **Greedy vs sampling — the `top_k=1` trick.** If `top_k=1`, `topk_p`/`topk_i`
-    contain only the single highest-probability token, and `multinomial` over one
-    option always returns it. So `top_k=1` is *greedy decoding*: deterministically
-    take the argmax every step, no randomness. This is exactly how `eval.py`
-    calls `generate` (all eval is greedy). With `top_k=50` (the default) you get
-    varied, more natural samples — useful for demos, not for reproducible scoring.
-- **Lines 53-54 — stop on end-of-text.** If the sampled token is `eot_token`
-  (`<|endoftext|>`, id 50256), the model is signaling "I'm done" — break out of
-  the loop without appending it. This is why a 2-token greedy call can return
-  fewer than 2 tokens if the model emits EOT early.
-- **Line 55 — append and roll forward.** `torch.cat([ids, nxt], dim=1)` glues the
-  new token onto the end along the sequence dimension. Next iteration feeds this
-  longer `ids` back in — the autoregressive step.
-- **Lines 56-57 — decode the output.** Here `return_completion` matters:
+- **`_next_token` (lines 34-49) — how the next token is chosen.** Factored into a
+  small helper. The key branch is line 42: if `temperature == 0` **or** `top_k ==
+  1`, return the plain `argmax` — *greedy* decoding, deterministic. Crucially this
+  is taken **before** any `logits / temperature`, so `temperature=0` is **safe**
+  (no division by zero) — matching Manela's explicit `temperature==0 → argmax`
+  branch. Otherwise (lines 44-49): scale by temperature, optionally keep only the
+  top-`k` logits (`masked_fill` the rest to `-inf` so softmax zeroes them), then
+  `softmax → multinomial` to sample one id from the RNG. So one helper covers both
+  greedy and top-k sampling.
+- **Line 53-54 — the signature / defaults.** `top_k=None, temperature=0.0` means
+  the **default is greedy**, matching manelalab's `ChronoGPT_instruct.py`. Pass
+  `temperature>0` (optionally with `top_k`) to sample. `use_cache=True` turns on
+  the KV cache (below).
+- **Line 71 — tokenize the prompt.** `ENC.encode(prompt)` → token ids;
+  `torch.tensor(..., dtype=torch.long, device=device)` makes an integer tensor on
+  the model's device; `.unsqueeze(0)` adds a leading *batch* dimension, turning
+  `(T,)` into `(1, T)`. So `ids` has shape `(1, n_prompt)`.
+- **Line 72 — `n_prompt`** records the prompt length, used at the end to slice off
+  the prompt and keep only what the model generated.
+- **Line 73 — the RNG.** A dedicated seeded generator; the sampling path draws from
+  it, so a given `(prompt, seed)` reproduces the same continuation. Under the greedy
+  default the seed is irrelevant (argmax has no randomness).
+- **Lines 74-75 — set up the KV cache.** `past = [None] * len(model.blocks)` is one
+  empty cache slot per transformer block; `step_in = ids` is what we feed this step
+  — the **whole prompt** on the first pass, then just the **one** new token on every
+  subsequent pass. (With `use_cache=False`, `past` stays `None` and we re-feed the
+  full `ids` instead.)
+- **Line 76 — the loop** runs at most `max_new_tokens` times, each adding one token
+  (or breaking early on end-of-text).
+- **Lines 77-81 — one forward pass.** Under bf16 autocast: if caching,
+  `model(step_in, return_hidden=False, past=past)` processes only the new token(s)
+  and returns the **updated cache** as the second value (we reassign `past`); the
+  cached keys/values from earlier positions are reused inside attention, so the work
+  is `O(T)` per token instead of `O(T²)`. With `use_cache=False` it falls back to
+  `model(ids, ...)` — recomputing the whole growing sequence every step (the
+  original demo behavior, numerically identical). Either way `return_hidden=False`
+  skips retaining the per-layer hidden states we don't need here.
+- **Line 82 — choose the next token.** `_next_token(logits[:, -1, :], ...)` takes
+  the **last** position's logits (the distribution over *the next* token; shape
+  `(1, vocab_size)`) and applies the greedy/sampling logic above.
+  - A subtlety worth knowing for fidelity to the paper: the model already applies a
+    *logit softcap* inside `forward` — `logits = 15 * torch.tanh(logits / 15)`
+    (`model.py`). So the logits handed to `_next_token` are already softcapped;
+    temperature (when used) scales them after that.
+- **Lines 83-84 — stop on end-of-text.** If the chosen token is `eot_token`
+  (`<|endoftext|>`, id 50256), the model is signaling "I'm done" — break without
+  appending it. This is why a 2-token greedy call can return fewer than 2 tokens.
+- **Lines 85-86 — append and roll forward.** `torch.cat([ids, nxt], dim=1)` glues
+  the new token onto the running `ids` (used for the final decode); `step_in = nxt`
+  makes the **next** pass feed only that new token when caching. (Without caching,
+  the next pass re-reads the full `ids`.)
+- **Lines 87-88 — decode the output.** Here `return_completion` matters:
   - `return_completion=True`: `ids[0, n_prompt:]` slices off the prompt tokens
     and keeps only the newly generated ones, **by token count** (`n_prompt`).
   - `return_completion=False` (default): `ids[0]` keeps the whole sequence

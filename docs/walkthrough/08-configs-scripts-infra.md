@@ -63,7 +63,7 @@ grad_accum: 4
 grad_checkpoint: true        # recompute blocks in backward: ~10x less activation memory, ~20% slower.
 warmup_ratio: 0.03
 weight_decay: 0.0
-grad_clip: null              # null = no clipping (grad norm still logged); set e.g. 1.0 to clip
+grad_clip: 1.0               # clip grad-norm to this (standard SFT value); null = off (norm still logged)
 val_fraction: 0.05
 ```
 
@@ -72,7 +72,7 @@ val_fraction: 0.05
 - **`grad_checkpoint: true`** — gradient (activation) checkpointing. During the backward pass, instead of storing every intermediate activation from the forward pass (memory-expensive), it *recomputes* each transformer block on the fly. Cost: ~20% slower steps. Benefit: ~10× less activation memory, which is what lets `batch_size: 8` fit on one 80GB card. This is the difference between fitting and an out-of-memory (OOM) crash here. See the verified memory note in `docs/running-guide.md` §6.
 - **`warmup_ratio: 0.03`** — the first 3% of training steps ramp the learning rate up from ~0 to its target value, then it decays. Warmup avoids destabilizing the pretrained weights with a large step on the very first, noisy batches. See the scheduler in `05-train.md`.
 - **`weight_decay: 0.0`** — L2-style regularization on the weights. Set to 0 here (SFT on a strong pretrained model rarely needs it); raise it if you see overfitting.
-- **`grad_clip: null`** — gradient clipping. `null` means no clipping (the gradient norm is still *logged* so you can watch for spikes). Set e.g. `1.0` to cap the gradient norm and tame occasional huge updates.
+- **`grad_clip: 1.0`** — gradient clipping. Caps the global gradient norm at this value to tame occasional huge updates (the standard SFT default). Set `null` to disable, in which case the gradient norm is still *logged* (so you can watch for spikes) but never clipped.
 - **`val_fraction: 0.05`** — fraction of the packed blocks held out as a validation set to track generalization. 5% held out, 95% trained on.
 
 ### The logging / checkpointing cadence block

@@ -43,7 +43,7 @@ logits. It does not train, load data, or generate text; those live in
 
 The file is **vendored** (copied, with minimal edits) from the authors' released
 `ChronoGPT_inference.py` on the Hugging Face model card. Per
-`docs/implementation-notes.md` §6 there are exactly two intentional changes:
+`docs/implementation-notes.md` §6 there are two intentional changes:
 
 1. **Every `@torch.inference_mode()` decorator was removed.** `inference_mode`
    tells PyTorch "do not build the autograd graph" — it is a stronger `no_grad`.
@@ -52,11 +52,15 @@ The file is **vendored** (copied, with minimal edits) from the authors' released
    backpropagate through. Removing them is what makes fine-tuning possible.
    (Numerical parity was verified — notebook §10 — so removing them changed no
    numerics, only whether gradients are tracked.)
-2. **The KV-cache generation branch was dropped.** The original had a separate
-   code path that caches past keys/values to generate one token at a time
-   efficiently. We removed it to keep the training path clean; our `infer.py`
-   generates by re-running the full sequence each step (slower, but simpler and
-   exactly what the model card's demo does).
+2. **The KV-cache generation branch was reworked into an *optional* `past`
+   argument to `forward`** (off by default, so the training path is untouched).
+   The original had a separate caching code path; rather than drop it, `forward`
+   now takes an optional per-block cache that `infer.generate` uses to decode one
+   token at a time. With `past=None` (training and eval) the forward is identical
+   to a clean full-sequence pass. See the **Addendum** at the end of this doc for
+   the mechanism, and `06-infer-and-eval.md` for how `generate` drives it. (An
+   earlier version of this walkthrough said the cache was simply *dropped* — that
+   was true before the 2026-06 update.)
 
 We **keep** the `(logits, layer_outputs)` return signature. The released instruct
 file comments out `layer_outputs`; we need it for `embed()` (extracting hidden
@@ -64,6 +68,17 @@ states as features for return prediction), so our version is a strict superset.
 
 It is, despite all the modifications below, **still a causal decoder-only language
 model**: same job as GPT-2 — read tokens left to right, predict the next one.
+
+> **Reading note (2026-06 update).** The per-method code quotes in the
+> walkthrough below show the **no-cache / training-and-eval path** — i.e. the
+> behavior when `forward` is called with `past=None`, which is exactly how
+> training, `evaluate`, and `embed` call it. The KV-cache update added a few
+> *optional* parameters that don't appear in these quotes: `Rotary.forward` gained
+> an `offset`, `CausalSelfAttention.forward`/`Block.forward` gained `past` and
+> `use_cache`, and `ChronoGPT.forward` gained `past`. They are inactive on the
+> path shown here and are documented in full in the **Addendum** at the end of this
+> doc. So if you diff these snippets against the current `model.py`, the only
+> differences are those optional cache arguments.
 
 ---
 
@@ -110,7 +125,8 @@ activation memory — live.**
 ```python
 # L1-26
 """ChronoGPT model — training-enabled.
-... (two intentional changes documented above) ...
+... (changes from the original documented above: inference_mode removed; KV cache
+made an optional `past` arg) ...
 """
 import os
 import json
@@ -795,7 +811,9 @@ x0-skip topology of modded-nanoGPT.
 **Q1. With U-net skips, x0 skips, and value embeddings, is the model still causal?**
 Yes, strictly. Causality is a statement about the **time/position axis**: token *t*'s
 output must not depend on tokens *> t*. The **only** operation that mixes across
-positions is attention, and it always uses `is_causal=True`. RMSNorm, QK-norm, the
+positions is attention, and it enforces causality — `is_causal=True` on the
+training/full-sequence path (and during KV-cached decoding a single new query only
+attends to already-generated positions, which is the same guarantee). RMSNorm, QK-norm, the
 MLP, RoPE, the softcap, x0 injection, and *all* the U-net/value-embedding skips act
 **within a position** (mixing the feature dimension) or **across depth** (layer to
 layer) — never across time. So no future token leaks into a past prediction.

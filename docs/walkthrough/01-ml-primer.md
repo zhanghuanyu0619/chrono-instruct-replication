@@ -198,7 +198,7 @@ You'll meet each of these in `train.py`, `model.py`, or `configs/train.yaml`. Th
 
 - **Gradient accumulation.** Big batches train more stably but don't fit in memory. Instead you run several small batches, **sum (accumulate) their gradients without updating**, then take one optimizer step — simulating a batch `accum` times larger. Here `batch_size: 8` × `grad_accum: 4` = an *effective* batch of 32 sequences per update. In `train.py` the loss is divided by `accum` and `opt.step()` only fires every `accum` micro-batches.
 
-- **Gradient clipping.** If a gradient's overall norm exceeds a threshold, rescale it down before stepping. This prevents a single freak batch from blowing up the weights ("exploding gradients"). `grad_clip` in the config (default `null` = off, but the norm is always logged via `clip_grad_norm_`). *Analogy:* winsorizing the update direction.
+- **Gradient clipping.** If a gradient's overall norm exceeds a threshold, rescale it down before stepping. This prevents a single freak batch from blowing up the weights ("exploding gradients"). `grad_clip` in the config (default `1.0`; set `null` to disable, in which case the norm is still logged via `clip_grad_norm_`). *Analogy:* winsorizing the update direction.
 
 - **Learning-rate warmup + cosine decay.** The learning rate is not constant. It **warms up** linearly from ~0 over the first few percent of steps (`warmup_ratio: 0.03`) — large early steps from random-ish state are destabilizing — then **decays** along a cosine curve toward 0 over the rest of training, taking ever-smaller steps as it (hopefully) nears a good minimum. Implemented in `train.py::cosine_lr`.
 
@@ -219,11 +219,11 @@ Once trained, the model is used in two distinct modes. Both are in `infer.py`.
 
 **Text generation.** To produce text, the model predicts the next-token distribution (§5), picks a token, appends it, and repeats — **autoregressive decoding**. How you "pick" matters:
 
-- **Greedy decoding** takes the single highest-probability token every step. Deterministic and repeatable. In this repo, `generate(..., top_k=1)` is greedy — used for the reproducible evaluation tests (`eval.py`'s president and major-events checks decode greedily, and AlpacaEval generation uses greedy so decoding strategy doesn't confound the comparison).
-- **Temperature** rescales the logits by $1/T$ before softmax. $T < 1$ sharpens the distribution (more conservative); $T > 1$ flattens it (more diverse/random); $T \to 0$ approaches greedy.
-- **Top-k sampling** restricts the choice to the $k$ most probable tokens, renormalizes, and samples from those — random but guard-railed against absurd low-probability tokens. The default `generate(..., top_k=50, temperature=1.0)` does this.
+- **Greedy decoding** takes the single highest-probability token every step. Deterministic and repeatable. It is the **default** here: `generate(..., temperature=0.0, top_k=None)` is greedy (matching manelalab's `ChronoGPT_instruct.py`), and `top_k=1` is greedy too. Used for the reproducible evaluation tests (`eval.py`'s president and major-events checks, and AlpacaEval generation, all decode greedily so decoding strategy doesn't confound the comparison).
+- **Temperature** rescales the logits by $1/T$ before softmax. $T < 1$ sharpens the distribution (more conservative); $T > 1$ flattens it (more diverse/random); $T = 0$ is greedy (handled by `argmax`, not division). Pass `temperature>0` to sample.
+- **Top-k sampling** restricts the choice to the $k$ most probable tokens, renormalizes, and samples from those — random but guard-railed against absurd low-probability tokens. Enable it with e.g. `generate(..., temperature=0.8, top_k=50)`.
 
-(This implementation recomputes the whole sequence each step rather than caching past keys/values — simple, slightly slower, fine for the paper's small demos. The "KV cache" optimization is intentionally dropped here, per the note in `model.py`.)
+(For speed, generation uses an optional **KV cache** by default — `use_cache=True` — so each step feeds only the new token instead of recomputing the whole sequence ($O(T)$ vs $O(T^2)$); `use_cache=False` restores the simple full-recompute path. See `03-model.md` and `06-infer-and-eval.md` for the mechanism.)
 
 **Embedding extraction.** The *other* inference mode produces no text at all. It runs one forward pass and reads out an internal **hidden state** as a feature vector — `infer.py::embed` returns a chosen layer's output, mean-pooled over the sequence (`pool="mean"`). This is the deep, context-dependent "embedding" flagged in §3, and it is the representation a finance researcher would feed into a downstream predictive model (e.g. regressing future returns on the text embedding of a filing). Generation asks *"what comes next?"*; embedding extraction asks *"what is the model's internal representation of this text?"* — same network, different read-out.
 
