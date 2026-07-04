@@ -65,20 +65,29 @@ Your claim was: *"1/1024 has an upper limit where soon (when doubling the contex
 
 **Part 1 — the number. Doubling does *not* cross 2π; it takes ~3.6×.** The slowest channel's angle is `pos × (1/1024)`:
 
-- At the trained context **1792**: angle `= 1792/1024 = 1.75 rad ≈ 100°` — only **28% of one full turn**. The design leaves the slowest channel deliberately *un*-wrapped across the whole trained window (good design: no aliasing within training).
+- At the trained context **1792**: angle `= 1792/1024 = 1.75 rad ≈ 100°` — only **28% of one full turn**. The design leaves the *slowest* channel deliberately un-wrapped across the whole trained window, so it acts as a non-repeating coarse ruler (the fast channels still alias within the window — see Part 2 — but this ruler disambiguates them).
 - **Doubling to 3584**: angle `= 3.50 rad ≈ 200°` — still **under 2π** (6.28).
 - **Crossing 2π** needs `pos = 2π × 1024 ≈ 6434` — i.e. **~3.6× the current window**, not 2×.
 
 So the periodicity ceiling is real, but it's at ~6,400 positions, not at "double." (The base here is `1024`, much smaller than the usual RoPE base of `10000`; a smaller base packs the wavelengths tighter, giving *less* long-range headroom — which is exactly why your "upper limit soon" instinct is qualitatively correct, just off by a factor.)
 
-**Part 2 — the mechanism. Crossing 2π does *not* create "the same positional embedding."** This is the part worth correcting, because it's the crux of why context extension is hard.
+**Part 2 — the mechanism. Separate two objects, because they behave differently.**
 
-- RoPE encodes **relative** position: the attention score depends only on the offset, `⟨R_m q, R_n k⟩ = g(n − m)`. Per channel, that contribution is `cos(ω·Δ)`, periodic with period `2π/ω`. So on the *slowest* channel, two token-pairs whose relative distance differs by exactly ~6,434 get the **same contribution from that one channel**.
-- But a full position/offset is encoded by **all 32 frequencies at once**, and they are mutually **incommensurate** (irrational ratios). For two *different* offsets to produce an identical embedding vector, *every* channel would have to realign simultaneously — which effectively never happens in any practical range. So true "collisions" are not the failure mode.
+- **The absolute embedding vector `R_n·q`** (the rotated query at position `n`) essentially never *exactly* repeats: to get an identical vector, all 32 channels would have to realign simultaneously, and with incommensurate frequencies that doesn't happen in range. So "two positions produce the *same embedding vector*" is **not** the mechanism.
+- **The relative attention score `g(Δ) = ⟨R_m q, R_n k⟩`** — which is what the model actually *uses* — is a different story. Per channel it is `cos(ω·Δ)`, **genuinely periodic** with period `2π/ω`. Two offsets `Δ` and `Δ + 2π/ω` give the **identical** contribution on that channel. **This is aliasing, it is real, and it is exactly the "two positions 2π away appear close" intuition.** It operates at the level that matters (the score), not the raw vector.
 
-**What actually breaks under extension is _extrapolation_, not aliasing.** During training the model only ever saw relative offsets in `[0, 1792)`, so the slow channels only ever rotated through angles in `[0, 1.75]` rad. Feed it a sequence of length 4000 and those channels swing into angle regions **never seen in training** (`> 1.75` rad, out toward 2π and beyond). The attention logits in that regime are untrained and typically misbehave — they blow up or collapse, and quality falls off a cliff. That's the real ceiling: **out-of-distribution rotation angles**, which is why the fix is always to *rescale the angles back into the trained range* rather than to worry about 2π wraparound per se.
+So aliasing *is* a genuine RoPE phenomenon — the earlier draft was too glib in waving it off. The right question is not "does it happen?" (it does) but "when does it hurt?" The answer hinges on the **slowest channel as a coarse ruler**:
 
-> One-line summary: your "upper limit" intuition is right; the number is ~3.6× (not 2×); and the failure is **extrapolation into untrained angles**, not identical embeddings from crossing 2π.
+- Its period is ~6,434, **longer than the trained window 1,792**, so across the whole window it **never repeats** — it assigns every in-window offset a unique coarse coordinate. The *fast* channels alias constantly (wavelengths 6–40 positions!), but the slow ruler disambiguates them. Aliasing is present the entire time; it is simply *resolved* within the trained range. That is precisely why the base is tuned so the slowest wavelength exceeds the context.
+
+**Two failure regimes follow — and aliasing is the one that dominates at long extension:**
+
+1. **Modest extension (~2–3×, e.g. 3584).** Still *under* the slow channel's period (3.5 rad < 2π), so the ruler is still unique. The dominant failure here is **extrapolation**: the slow channels swing into angles > 1.75 rad they **never saw in training**, and the untrained attention logits misbehave (blow up or collapse). Aliasing hasn't kicked in yet.
+2. **Large extension (> ~6,434).** The slow ruler itself **wraps**. Now the unique coarse coordinate is gone, and **aliasing — your mechanism — becomes a real, additional degradation**: offsets a full period apart genuinely become confusable, on top of the extrapolation problem.
+
+Both fixes in Section 3 target *both* modes at once by **rescaling angles back into the trained range** — that simultaneously avoids untrained angles (extrapolation) and keeps offsets inside one non-repeating period (aliasing).
+
+> One-line summary: your "upper limit" intuition is right, and so is the aliasing mechanism — two offsets a period apart *do* alias in the **score**. The number is ~3.6× (not 2×). Within the trained window the slow channel's super-window period suppresses aliasing; **extrapolation** dominates at modest extension, and **your aliasing** dominates once you push past ~6,434.
 
 ---
 
