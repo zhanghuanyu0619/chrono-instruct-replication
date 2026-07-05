@@ -35,15 +35,21 @@ class RunLogger:
             self._writer.writeheader()
         self._wandb = None
         if wandb_cfg and wandb_cfg.get("enabled"):
-            import wandb
-            self._wandb = wandb
-            base = wandb_cfg.get("name") or os.path.basename(output_dir.rstrip("/"))
-            wandb.init(
-                project=wandb_cfg.get("project", "chrono-instruct"),
-                name=f"{base}-{time.strftime('%Y%m%d-%H%M%S')}",  # unique per launch -> no overlaid same-name runs
-                group=base,                                        # ...but still grouped by vintage/output_dir
-                config=run_config,
-            )
+            # Degrade gracefully: a missing `wandb login` or offline box must not
+            # kill a multi-hour run. On any failure, fall back to CSV-only.
+            try:
+                import wandb
+                base = wandb_cfg.get("name") or os.path.basename(output_dir.rstrip("/"))
+                wandb.init(
+                    project=wandb_cfg.get("project", "chrono-instruct"),
+                    name=f"{base}-{time.strftime('%Y%m%d-%H%M%S')}",  # unique per launch -> no overlaid same-name runs
+                    group=base,                                        # ...but still grouped by vintage/output_dir
+                    config=run_config,
+                )
+                self._wandb = wandb  # only after a successful init, so log() is safe
+            except Exception as e:
+                print(f"[tracking] W&B enabled but init failed ({type(e).__name__}: {e}); "
+                      f"continuing with CSV only. Run `wandb login` on this box to enable live logging.")
 
     def log(self, **row):
         row.setdefault("elapsed_s", round(time.time() - self._t0, 1))

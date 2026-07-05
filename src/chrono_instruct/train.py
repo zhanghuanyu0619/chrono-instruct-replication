@@ -91,13 +91,19 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
     # the best model, never the (possibly overfit) last step. Requires a
     # meaningful val signal, i.e. eval_every small enough to eval several times.
     patience = cfg.get("early_stop_patience") or 0
+    min_delta = cfg.get("min_delta") or 0.0  # val must improve by > min_delta to count (Keras semantics)
     best = {"val": float("inf"), "step": 0, "state": None, "stale": 0}
 
     def consider(vloss, step):
-        """Track best-val weights; return True when patience is exhausted (stop)."""
+        """Track best-val weights; return True when patience is exhausted (stop).
+
+        An eval counts as an improvement (resets patience and updates the saved
+        best) only if it beats the running best by more than `min_delta`, so
+        trivial noise on a tiny val set doesn't keep patience alive forever.
+        """
         if not patience:
             return False
-        if vloss < best["val"]:
+        if vloss < best["val"] - min_delta:
             best.update(val=vloss, step=step, stale=0,
                         state={k: v.detach().to("cpu", copy=True) for k, v in model.state_dict().items()})
         else:
@@ -230,12 +236,17 @@ def run(cfg):
 
     push = cfg.get("push_to_hub")
     if push and push.get("enabled"):
-        from .hub import push_dir
-        # Push the completed model to the canonical repo; a PARTIAL run (didn't end on
-        # final_stage) gets a "-<last_stage>" suffix so it can't clobber the final model.
+        # Push ONLY a complete curriculum run (ended on final_stage). A partial /
+        # smoke run (e.g. stage1-only) is skipped so default-on push doesn't upload
+        # a 7.4GB checkpoint on every tuning run — weights are still saved locally.
+        # To push a deliberately short run, set final_stage to its last stage.
         last_stage = cfg["stages"][-1]["name"]
         final_stage = push.get("final_stage") or last_stage
-        repo_id = push["repo_id"] if last_stage == final_stage else f"{push['repo_id']}-{last_stage}"
-        msg = f"stages={[s['name'] for s in cfg['stages']]} final_val={final_val} seed={cfg['seed']}"
-        push_dir(os.path.join(cfg["output_dir"], "final"), repo_id,
-                 private=push.get("private", True), commit_message=msg)
+        if last_stage != final_stage:
+            print(f"[hub] skip push: run ended on '{last_stage}', not final_stage '{final_stage}' "
+                  f"(partial/smoke run). Weights saved locally at {cfg['output_dir']}/final.")
+        else:
+            from .hub import push_dir
+            msg = f"stages={[s['name'] for s in cfg['stages']]} final_val={final_val} seed={cfg['seed']}"
+            push_dir(os.path.join(cfg["output_dir"], "final"), push["repo_id"],
+                     private=push.get("private", True), commit_message=msg)
