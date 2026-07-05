@@ -63,8 +63,14 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
 
     name = stage["name"]
     accum = cfg.get("grad_accum", 1)
-    log_every = cfg.get("log_every", 20)
-    eval_every = cfg.get("eval_every")
+    # Per-stage override, falling back to the global config. Small stages have
+    # very few optimizer steps (stage1_scratch is ~1 step/epoch: 1097 short
+    # examples pack into ~34 blocks, and an effective batch of batch_size*accum
+    # blocks drains that in one step), so they need eval_every/log_every ~1 to
+    # produce a usable curve; large stages (stage3 ~14k steps) want coarser
+    # logging or the CSV and eval overhead explode.
+    log_every = stage.get("log_every", cfg.get("log_every", 20))
+    eval_every = stage.get("eval_every", cfg.get("eval_every"))
     grad_clip = cfg.get("grad_clip")          # None -> no clipping (norm still logged)
     tokens_per_step = cfg["batch_size"] * cfg["block_size"] * accum
     steps_per_epoch = len(loader) // accum    # only full accum groups step; floor matches reality

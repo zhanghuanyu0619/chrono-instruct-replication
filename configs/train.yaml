@@ -26,6 +26,10 @@ grad_clip: 1.0               # clip grad-norm to this (standard SFT value); null
 val_fraction: 0.05
 log_every: 20                # train metrics (loss, lr, grad_norm, tok/s, VRAM) logged every N steps
 eval_every: 200              # periodic in-stage validation -> a real val curve (like the paper's Fig 1)
+                             # BOTH are GLOBAL DEFAULTS; a stage can override them (see `stages` below).
+                             # Units are OPTIMIZER STEPS, not epochs: if eval_every > a stage's total
+                             # steps it never fires and you get only the step-0 + final points. Tiny
+                             # stages (stage1 is ~6 steps) therefore need a per-stage eval_every ~1.
 val_max_blocks: 500          # cap the random held-out set so EACH eval covers the whole val set cheaply
 save_every: 500
 
@@ -43,16 +47,24 @@ push_to_hub:
 
 # Curriculum, trained in order; each stage continues from the previous weights.
 # LR / epochs are an initial guess to be tuned against the paper's Figure 1 curves.
+# Optional per-stage `eval_every` / `log_every` override the globals above so each
+# stage yields ~30-70 plot points regardless of its (very different) step count.
 stages:
   - name: stage1_scratch
     sources: ["scratch"]
     epochs: 3
     lr: 3.0e-5
+    eval_every: 1      # ~6 total steps -> log every one, else the curve is 2 dots
+    log_every: 1
   - name: stage2_self_instruct
     sources: ["self-instruct", "self-generated", "gpt-3"]
     epochs: 2          # SFT standard is 1-3 epochs; Tulu-3 used 2. Watch the val curve.
     lr: 3.0e-5
+    eval_every: 20     # ~700 steps (paper's Fig 1 Stage 2) -> ~35 points
+    log_every: 20
   - name: stage3_tulu
     sources: ["tulu"]
     epochs: 2          # ~2x our 1-epoch step count, closer to the paper's Fig 1 (~14k steps)
     lr: 2.0e-5
+    eval_every: 200    # ~14k steps -> ~70 points; eval_every 1 here would be ruinous
+    log_every: 100
