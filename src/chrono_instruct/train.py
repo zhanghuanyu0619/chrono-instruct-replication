@@ -26,11 +26,18 @@ def masked_lm_loss(logits, labels, reduction="mean"):
     return F.cross_entropy(shift_logits, shift_labels, ignore_index=-100, reduction=reduction)
 
 
-def cosine_lr(step, total, base_lr, warmup):
+def cosine_lr(step, total, base_lr, warmup, min_lr=0.0):
+    """Linear warmup then cosine decay from base_lr down to min_lr (a floor).
+
+    min_lr=0 reproduces the classic decay-to-zero. A small floor (e.g. 10% of
+    base_lr) keeps the final steps productive instead of wasting them at ~0 lr,
+    which matters most on short stages where the zero-tail is a big fraction of
+    the budget.
+    """
     if step < warmup:
         return base_lr * (step + 1) / max(1, warmup)
     progress = (step - warmup) / max(1, total - warmup)
-    return 0.5 * base_lr * (1 + math.cos(math.pi * progress))
+    return min_lr + 0.5 * (base_lr - min_lr) * (1 + math.cos(math.pi * progress))
 
 
 @torch.no_grad()
@@ -76,6 +83,26 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
     steps_per_epoch = len(loader) // accum    # only full accum groups step; floor matches reality
     total_steps = steps_per_epoch * stage["epochs"]
     warmup = int(total_steps * cfg.get("warmup_ratio", 0.03))
+    min_lr = stage["lr"] * cfg.get("min_lr_ratio", 0.0)  # cosine floor; 0.0 -> decay to zero (old behavior)
+
+    # Early stopping (global `early_stop_patience`; null/0 -> disabled). When on,
+    # we snapshot the best-val weights and, on stopping OR finishing, restore them
+    # so this stage's saved checkpoint — and the next stage's starting point — is
+    # the best model, never the (possibly overfit) last step. Requires a
+    # meaningful val signal, i.e. eval_every small enough to eval several times.
+    patience = cfg.get("early_stop_patience") or 0
+    best = {"val": float("inf"), "step": 0, "state": None, "stale": 0}
+
+    def consider(vloss, step):
+        """Track best-val weights; return True when patience is exhausted (stop)."""
+        if not patience:
+            return False
+        if vloss < best["val"]:
+            best.update(val=vloss, step=step, stale=0,
+                        state={k: v.detach().to("cpu", copy=True) for k, v in model.state_dict().items()})
+        else:
+            best["stale"] += 1
+        return best["stale"] >= patience
 
     def mem_gb():
         return torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0
@@ -97,11 +124,13 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
     with torch.no_grad(), torch.autocast(device_type=device.type, dtype=torch.bfloat16):
         logits0, _ = model(ids0.to(device), return_hidden=False)
     val_loss = log_point(0, 0, masked_lm_loss(logits0, labels0.to(device)).item(),
-                         cosine_lr(0, total_steps, stage["lr"], warmup), 0.0, 0.0)
+                         cosine_lr(0, total_steps, stage["lr"], warmup, min_lr), 0.0, 0.0)
+    consider(val_loss, 0)  # step-0 (base/prev-stage) weights are the initial best
 
     step = 1  # step 0 is the pre-training anchor above; counting updates from 1
     last_t, last_step = time.time(), 0
     tl_sum, tl_n, grad_norm = 0.0, 0, 0.0
+    stopped = False
     for epoch in range(stage["epochs"]):
         for i, (ids, labels) in enumerate(loader):
             ids, labels = ids.to(device), labels.to(device)
@@ -111,7 +140,7 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
             loss.backward()
             if (i + 1) % accum == 0:
                 grad_norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip or 1e30))
-                lr = cosine_lr(step, total_steps, stage["lr"], warmup)
+                lr = cosine_lr(step, total_steps, stage["lr"], warmup, min_lr)
                 for group in opt.param_groups:
                     group["lr"] = lr
                 opt.step()
@@ -126,16 +155,34 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
                     last_t, last_step = now, step
                     val_loss = log_point(step, epoch, tl_sum / max(1, tl_n), lr, grad_norm, tps)
                     tl_sum, tl_n = 0.0, 0
+                    stopped = consider(val_loss, step)
                 if cfg.get("save_every") and step % cfg["save_every"] == 0:
                     model.save_pretrained(os.path.join(cfg["output_dir"], f"{name}-step{step}"))
                 step += 1
+                if stopped:
+                    print(f"[{name}] early stop at step {step - 1}: no val improvement in {patience} "
+                          f"evals (best val {best['val']:.4f} @ step {best['step']})")
+                    break
         opt.zero_grad(set_to_none=True)  # drop any partial accum group so its grads can't leak into the next epoch
+        if stopped:
+            break
 
-    # final point (same step for train + val) so both curves end together
-    now = time.time()
-    tps = (step - 1 - last_step or 1) * tokens_per_step / max(1e-6, now - last_t)
-    val_loss = log_point(step - 1, stage["epochs"] - 1, tl_sum / max(1, tl_n) if tl_n else float("nan"),
-                         cosine_lr(step - 1, total_steps, stage["lr"], warmup), grad_norm, tps)
+    # Final point (same step for train + val) so both curves end together — skip
+    # when we stopped early (the stopping eval was already the last logged point).
+    if not stopped:
+        now = time.time()
+        tps = (step - 1 - last_step or 1) * tokens_per_step / max(1e-6, now - last_t)
+        val_loss = log_point(step - 1, stage["epochs"] - 1, tl_sum / max(1, tl_n) if tl_n else float("nan"),
+                             cosine_lr(step - 1, total_steps, stage["lr"], warmup, min_lr), grad_norm, tps)
+        consider(val_loss, step - 1)
+
+    # Restore best-val weights so the saved checkpoint and the next stage start
+    # from the best model. Only when early stopping is on (patience set); with it
+    # off, behavior is unchanged (last-step weights, full epochs).
+    if patience and best["state"] is not None:
+        model.load_state_dict(best["state"])
+        print(f"[{name}] restored best-val weights: val {best['val']:.4f} @ step {best['step']}")
+        return best["val"]
     return val_loss
 
 
