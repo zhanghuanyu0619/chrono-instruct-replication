@@ -470,7 +470,7 @@ The top-level orchestrator the trainer calls. It returns `{stage_name: (train_ds
 
 ## 12. End-to-end data flow (in prose)
 
-The full path from the Hub to a training batch, naming the function at each hop:
+The full path from the Hub to a training batch, naming the function at each hop. **Important:** steps 1–8 below are the *first-build* path (a cache **miss**). The cache is a **gate in front of this whole pipeline**, not a step inside it — `prepare_stages` first computes `_cache_key(cfg)` and, if the matching `.pt` file already exists, it `torch.load`s the saved `PackedDataset`s and jumps **straight to step 9**, skipping 1–8 entirely. Because `_cache_key` excludes `model_repo`/`lr`/`epochs`, *every vintage run after the first* (and every hyperparameter re-run) takes that fast path — that is where the reuse happens. The cached object **is** the dict of `PackedDataset`s from steps 7–8; there is no separate "packed" vs "cached" data.
 
 1. **Raw rows** — `load_raw(dataset)` pulls all 647,944 rows of `ChronoInstruct-SFT` from the Hub (HF `datasets`).
 2. **Temporal screen** — `prepare_stages` filters with `keep_row` (which calls `_parse_label`), keeping the ~425,119 rows the GPT-4.1 classifier marked label 0 / confidence 10. *This is the no-lookahead guarantee.* Applied once for the whole vintage family.
