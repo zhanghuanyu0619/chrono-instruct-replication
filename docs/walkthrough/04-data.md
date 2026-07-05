@@ -418,6 +418,14 @@ This derives a deterministic 16-hex-char cache id from **exactly and only** the 
 
 The point: if *any* of these change, the key changes, and the next run rebuilds rather than reusing a stale cache. Conversely, things that do **not** affect the data — learning rate, epochs, batch size, the model checkpoint — are deliberately **absent**, so changing them reuses the cache (the data is model- and hyperparameter-independent).
 
+**On the mechanics (for readers new to this pattern).** Three pieces of jargon on line 192, none of them exotic:
+
+- **`cfg`** is just the parsed `configs/train.yaml` as a Python dict — "config." It is threaded through the whole module; `_cache_key` reads a handful of its keys.
+- **`hashlib.sha1(...).hexdigest()[:16]`** turns the payload into a short *fingerprint*. `json.dumps(payload, sort_keys=True)` serializes the dict to a canonical string (sorting keys so `{a,b}` and `{b,a}` hash identically), `.encode()` makes it bytes, `sha1(...)` hashes it, `.hexdigest()` renders the hash as a 40-character hex string, and `[:16]` keeps the first 16 chars (64 bits) — short enough for a tidy filename like `packed-a1b2c3d4e5f6a7b8.pt`, wide enough that two different configs will never collide in practice.
+- SHA-1 here is **not** a security device — it is a content fingerprint. Using it (rather than sha256) and truncating it is fine precisely because the key is a cache label, not a cryptographic boundary.
+
+**Is this standard practice?** Yes — this is a **content-addressed cache**: hash the inputs, use the hash to name the output, rebuild only when the hash changes. Git works the same way (every object is keyed by its SHA-1; the "short SHA" you see in `git log` is the same first-few-chars truncation). The one caveat is not about the key but about *loading*: the cached file is unpickled with `weights_only=False` (§11b), which trusts the file — safe here only because your own process wrote it.
+
 The `"split": "example-v2"` literal on line 183 is a manual cache-version marker. It is hardcoded so that the move from block-level to example-level splitting (§9) invalidates every previously built cache — a critical correctness flush, since an old cache could contain the leaky split. Bump this string whenever the packing/splitting logic changes in a way that should not silently reuse old artifacts.
 
 ### 11b. `prepare_stages`
