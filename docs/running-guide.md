@@ -51,6 +51,7 @@ pytest -q                                    # CPU smoke test, ~5s
 
 # Register the venv as a Jupyter kernel. --user makes it visible to ANY
 # JupyterLab, including Lambda's hosted one.
+pip install ipykernel
 python -m ipykernel install --user --name chrono --display-name "Python (chrono)"
 jupyter lab notebooks/verify_pipeline.ipynb  # or Lambda's hosted JupyterLab
 ```
