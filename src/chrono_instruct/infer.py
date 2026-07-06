@@ -31,6 +31,33 @@ def free_memory():
         torch.cuda.empty_cache()
 
 
+def _apply_repetition_penalty(logits, ids, penalty):
+    """CTRL-style penalty (Keskar et al. 2019), in place on the last-step logits [B, V]:
+    divide the logit of every already-generated token by `penalty` (>1), so repeating
+    is discouraged. Symmetric on sign (negative logits are multiplied) so the ranking
+    stays sensible."""
+    for b in range(ids.size(0)):
+        toks = torch.unique(ids[b])
+        sel = logits[b, toks]
+        logits[b, toks] = torch.where(sel > 0, sel / penalty, sel * penalty)
+
+
+def _ban_repeat_ngrams(logits, ids, n):
+    """Set to -inf any next token that would repeat an n-gram already in the sequence
+    (HuggingFace's no_repeat_ngram_size). Kills exact loops that a penalty alone lets
+    through. In place on [B, V]."""
+    if ids.size(1) < n:
+        return
+    for b in range(ids.size(0)):
+        seq = ids[b].tolist()
+        seen = {}
+        for i in range(len(seq) - n + 1):
+            seen.setdefault(tuple(seq[i:i + n - 1]), set()).add(seq[i + n - 1])
+        banned = seen.get(tuple(seq[-(n - 1):]))
+        if banned:
+            logits[b, list(banned)] = float("-inf")
+
+
 def _next_token(logits, top_k, temperature, rng):
     """Pick the next id from the last step's logits[B, V].
 
@@ -51,13 +78,19 @@ def _next_token(logits, top_k, temperature, rng):
 
 @torch.no_grad()
 def generate(model, device, prompt, max_new_tokens=128, top_k=None, temperature=0.0, seed=123,
-             return_completion=False, use_cache=True):
+             return_completion=False, use_cache=True, repetition_penalty=1.0, no_repeat_ngram_size=0):
     """Generate a continuation of `prompt`.
 
     Decoding defaults match manelalab's `ChronoGPT_instruct.py`: temperature=0.0 is
     GREEDY (argmax), top_k=None. Set temperature>0 to sample; top_k (e.g. 50)
     restricts sampling to the k most likely tokens. To force greedy, use
     temperature=0 (safe here) or top_k=1 — NOT a tiny temperature.
+
+    Anti-repetition (both OFF by default, so paper-matching greedy is unchanged):
+    `repetition_penalty` > 1.0 (e.g. 1.3) discourages re-using tokens; a
+    `no_repeat_ngram_size` of 3 forbids repeating any 3-gram. Greedy decoding on a
+    ~1.5B model loops without these; turn them on for readable output, leave them off
+    to reproduce the paper's exact decoding.
 
     use_cache=True threads a KV cache through the model so each step feeds only the
     newly generated token instead of recomputing the whole sequence — O(T) work per
@@ -79,7 +112,12 @@ def generate(model, device, prompt, max_new_tokens=128, top_k=None, temperature=
                 logits, past = model(step_in, return_hidden=False, past=past)
             else:
                 logits, _ = model(ids, return_hidden=False)
-        nxt = _next_token(logits[:, -1, :], top_k, temperature, rng)
+        step_logits = logits[:, -1, :].float().clone()  # penalties/bans need a mutable fp32 copy
+        if repetition_penalty != 1.0:
+            _apply_repetition_penalty(step_logits, ids, repetition_penalty)
+        if no_repeat_ngram_size:
+            _ban_repeat_ngrams(step_logits, ids, no_repeat_ngram_size)
+        nxt = _next_token(step_logits, top_k, temperature, rng)
         if nxt.item() == ENC.eot_token:
             break
         ids = torch.cat([ids, nxt], dim=1)
