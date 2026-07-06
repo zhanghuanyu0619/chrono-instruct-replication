@@ -19,6 +19,7 @@ BASE_CFG="${BASE_CFG:-configs/train.yaml}"
 YEARS=("$@")
 [ ${#YEARS[@]} -eq 0 ] && YEARS=(1999 2005 2010 2015 2020 2024)
 
+OK=() ; FAILED=()
 for Y in "${YEARS[@]}"; do
     CUTOFF="${Y}1231"
     NAME="chrono-instruct-${Y}"
@@ -26,12 +27,21 @@ for Y in "${YEARS[@]}"; do
     OUT="$PERSIST/runs/$NAME"
     echo "==================  $NAME  (base manelalab/chrono-gpt-v1-$CUTOFF)  =================="
 
-    # Derive a per-vintage config from the base (robust YAML edit, not sed).
-    python scripts/make_vintage_config.py --base "$BASE_CFG" --out "$CFG" \
-        --cutoff "$CUTOFF" --output-dir "$OUT" --hf-user "$HF_USER"
-
-    chrono train --config "$CFG"
-    bash scripts/publish_results.sh "$OUT" "$NAME" || echo "WARN: publish failed for $NAME (continuing)"
+    # Derive a per-vintage config from the base (robust YAML edit, not sed). A
+    # failure here (or in training) logs and moves to the next vintage rather than
+    # aborting the whole unattended sweep.
+    if python scripts/make_vintage_config.py --base "$BASE_CFG" --out "$CFG" \
+            --cutoff "$CUTOFF" --output-dir "$OUT" --hf-user "$HF_USER" \
+       && chrono train --config "$CFG"; then
+        bash scripts/publish_results.sh "$OUT" "$NAME" || echo "WARN: publish failed for $NAME (continuing)"
+        OK+=("$Y")
+    else
+        echo "ERROR: $NAME failed (base repo missing? OOM? auth?) — continuing to next vintage"
+        FAILED+=("$Y")
+    fi
 done
 
-echo "All vintages done: ${YEARS[*]}"
+echo "==================  sweep done  =================="
+echo "  trained: ${OK[*]:-none}"
+echo "  failed:  ${FAILED[*]:-none}"
+[ ${#FAILED[@]} -eq 0 ]   # exit non-zero if any vintage failed, so CI/`&&` chains notice
