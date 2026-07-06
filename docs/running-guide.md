@@ -261,6 +261,21 @@ Run the §2 setup (and everything after) **inside** the tmux session. Activate t
 venv *inside* tmux, not before `tmux new` — a fresh tmux shell won't inherit it.
 After `tmux attach`, the activation persists.
 
+**No tmux? (Lambda browser terminal / JupyterLab).** These persist server-side, so a
+long job survives you closing the browser tab. For a fully hands-off sweep, still
+detach it with `nohup` so nothing — not even the terminal dying — can kill it, and
+tee the output to a log you can reattach to:
+```bash
+export NOTIFY_SMTP_USER="zhanghuanyu0619@gmail.com"   # (optional) email-on-finish, §12
+export NOTIFY_SMTP_PASS="<app password>"
+nohup bash scripts/train_all_vintages.sh 1999 2005 2010 2015 2024 > sweep.log 2>&1 &
+tail -f sweep.log     # watch live; Ctrl-C stops watching, NOT the job
+```
+Check on it later with `tail -f sweep.log`, `nvidia-smi`, or `jobs`. Because the job
+is detached and self-notifying, you can close the browser and just wait for the
+per-vintage emails. Export the notify vars *before* `nohup` so the detached process
+inherits them.
+
 ## 12. Email notifications (optional)
 
 Get an email as each vintage finishes (or fails), so you don't babysit the sweep.
