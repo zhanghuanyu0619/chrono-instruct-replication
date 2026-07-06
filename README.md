@@ -27,8 +27,8 @@ infrastructure for downstream, lookahead-bias-free prediction work.
   win-rate vs Qwen-1.5-1.8B-Chat (Figure 3, judged by the `alpaca_eval` package).
 - Config-toggled Weights & Biases logging and Hugging Face Hub push (both default
   on, each degrades gracefully). After a run, loss logs + figures auto-save to
-  `results/<name>/`; the sequential sweep publishes each vintage to GitHub + HF and
-  can **email you** as each one finishes.
+  `results/<name>/`; the sequential sweep publishes each vintage to GitHub + HF, and
+  wandb streams live curves + run-finished notifications.
 
 ## Layout
 
@@ -37,7 +37,7 @@ src/chrono_instruct/   model.py  data.py  train.py  infer.py  eval.py  cli.py
                        tracking.py  hub.py  figures.py   # logging / HF push / plots
 configs/               train.yaml  eval.yaml
 scripts/               lambda_setup.sh  train_all_vintages.sh  make_vintage_config.py
-                       publish_results.sh  notify_email.py  launch_local.sh  slurm_array.sbatch
+                       publish_results.sh  launch_local.sh  slurm_array.sbatch
 tests/                 test_smoke.py        # tiny CPU end-to-end, no download
 docs/                  running-guide.md  walkthrough/   # end-to-end guide + line-by-line walkthrough
 ```
@@ -69,7 +69,7 @@ chrono figure  --kind 2 --runs runs/chrono-instruct-*            # Fig 2: val lo
 chrono push    --repo runs/chrono-instruct-2020/final --to <user>/chrono-instruct-v1-20201231
 ```
 
-Sequential vintage sweep on one GPU (trains, publishes, optionally emails per vintage):
+Sequential vintage sweep on one GPU (trains + publishes each vintage; wandb notifies on finish):
 
 ```bash
 bash scripts/train_all_vintages.sh 1999 2005 2010 2015 2024      # omit years already trained

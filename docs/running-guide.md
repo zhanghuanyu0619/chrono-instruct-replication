@@ -227,15 +227,17 @@ bash scripts/train_all_vintages.sh                       # 1999 2005 2010 2015 2
 bash scripts/train_all_vintages.sh 1999 2005 2010 2015 2024   # skip an already-trained vintage
 ```
 It derives a per-vintage config from `configs/train.yaml` (overriding `model_repo`,
-`output_dir`, and the HF `repo_id`), trains, runs `publish_results.sh`, and (if
-configured, §12) emails you as each vintage finishes. A single vintage failing is
-logged and skipped — the sweep continues and prints a `trained:` / `failed:` summary
-at the end. Set `HF_USER` / `PERSIST` as env vars if they differ from the defaults.
-Rough budget: ~3 h/vintage on an 80GB H100 → ~15–24 h for all six (cache built once).
+`output_dir`, and the HF `repo_id`), trains, and runs `publish_results.sh`. A single
+vintage failing is logged and skipped — the sweep continues and prints a `trained:` /
+`failed:` summary at the end. Set `HF_USER` / `PERSIST` as env vars if they differ
+from the defaults. For a run-finished notification, enable wandb's run-finished
+emails (below). Rough budget: ~3 h/vintage on an 80GB H100 → ~15–24 h for all six
+(cache built once).
 
 **Prerequisites for an unattended sweep:** `hf auth login` (§3), the GitHub identity
 + cached PAT (§3b, or the per-vintage GitHub publish hangs on a password prompt), and
-optionally `wandb login` and the email vars (§12). Run it inside tmux (§11).
+`wandb login` (config default; also flip on **run-finished emails** in your wandb user
+settings to be pinged as each vintage completes). Run it detached (§11).
 
 **Comparable curves:** every vintage must use the *same* `configs/train.yaml`
 hyperparameters, or the overlaid Figure 2 isn't apples-to-apples. If you retuned the
@@ -266,41 +268,25 @@ long job survives you closing the browser tab. For a fully hands-off sweep, stil
 detach it with `nohup` so nothing — not even the terminal dying — can kill it, and
 tee the output to a log you can reattach to:
 ```bash
-export NOTIFY_SMTP_USER="zhanghuanyu0619@gmail.com"   # (optional) email-on-finish, §12
-export NOTIFY_SMTP_PASS="<app password>"
 nohup bash scripts/train_all_vintages.sh 1999 2005 2010 2015 2024 > sweep.log 2>&1 &
 tail -f sweep.log     # watch live; Ctrl-C stops watching, NOT the job
 ```
 Check on it later with `tail -f sweep.log`, `nvidia-smi`, or `jobs`. Because the job
-is detached and self-notifying, you can close the browser and just wait for the
-per-vintage emails. Export the notify vars *before* `nohup` so the detached process
-inherits them.
+is detached, you can close the browser; enable wandb run-finished emails (§12) to be
+pinged as each vintage completes.
 
-## 12. Email notifications (optional)
+## 12. Run-finished notifications (wandb)
 
-Get an email as each vintage finishes (or fails), so you don't babysit the sweep.
-`scripts/train_all_vintages.sh` calls `scripts/notify_email.py`, which reads SMTP
-credentials from the **environment** — nothing is committed. With Gmail:
+wandb is on by default (`configs/train.yaml`), so the simplest way to be told when a
+run/vintage finishes is wandb's own notification — no extra code or credentials:
 
-1. Enable 2-Step Verification on the Google account, then create an **App Password**
-   (Google Account → Security → App passwords). It's a 16-char token, *not* your
-   login password.
-2. Export the vars in the same shell (inside tmux) before launching the sweep:
-   ```bash
-   export NOTIFY_SMTP_USER="zhanghuanyu0619@gmail.com"
-   export NOTIFY_SMTP_PASS="<16-char app password>"    # NOT your Google password
-   # export NOTIFY_TO="someone-else@example.com"       # optional; defaults to SMTP_USER
-   ```
+1. `wandb login` on the box (once).
+2. In your wandb **user settings → notifications**, enable **run-finished** emails
+   (and/or Slack). You'll get an email with a link to the run's curves as each vintage
+   completes; crashes are reported too.
 
-You'll get one email per vintage (`[chrono] chrono-instruct-1999 finished ✅` with the
-run's `summary.json` in the body), a failure email if one dies, and a final
-sweep-summary email. If the vars are unset the sweep runs identically, just without
-email — and a send failure never aborts training. Test it standalone:
-```bash
-python scripts/notify_email.py --subject "[chrono] test" --body "hello from the box"
-```
-For a *push* notification instead of email, a webhook service (e.g. `ntfy.sh`) is a
-drop-in alternative — swap the `notify()` body in the sweep script for a `curl`.
+Loss curves stream live to the wandb project (`chrono-instruct`) during the run, and
+still land in `output_dir/metrics.csv` (+ `results/<name>/`) regardless of wandb.
 
 ## Gotchas
 - **Shut down notebook kernels before training:** a live JupyterLab kernel keeps
