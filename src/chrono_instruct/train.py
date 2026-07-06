@@ -8,6 +8,7 @@ cluster fan-out is handled outside this file (see scripts/), never here.
 import json
 import math
 import os
+import shutil
 import time
 
 import torch
@@ -192,6 +193,34 @@ def train_stage(model, train_ds, val_ds, cfg, stage, device, run_logger=None):
     return val_loss
 
 
+def save_results(output_dir, results_root="results"):
+    """Copy a run's plot-source artifacts into results/<name>/ and render Figure 1.
+
+    The lightweight, git-friendly outputs (metrics.csv, resolved config, summary,
+    figure1.png) — NOT the multi-GB weights, which go to the HF Hub. This is the
+    'save' half; committing/pushing results/ to GitHub is left to the user or
+    scripts/publish_results.sh (git ops don't belong inside the training run).
+    Never raises: a failure here must not sink a finished run.
+    """
+    from . import figures
+    name = os.path.basename(output_dir.rstrip("/"))
+    dest = os.path.join(results_root, name)
+    try:
+        os.makedirs(dest, exist_ok=True)
+        for fn in ("metrics.csv", "config.yaml", "summary.json"):
+            src = os.path.join(output_dir, fn)
+            if os.path.exists(src):
+                shutil.copy(src, os.path.join(dest, fn))
+        try:
+            figures.figure1(output_dir, os.path.join(dest, "figure1.png"))
+        except Exception as e:  # matplotlib/backend hiccup shouldn't lose the run
+            print(f"[results] figure1 render skipped ({type(e).__name__}: {e})")
+        print(f"[results] saved run artifacts -> {dest}/ "
+              f"(commit + push with scripts/publish_results.sh or `git add {dest}`)")
+    except OSError as e:
+        print(f"[results] save skipped ({type(e).__name__}: {e})")
+
+
 def run(cfg):
     cfg.setdefault("seed", 123)  # single global seed: data split, shuffle, sampling all derive from it
     torch.manual_seed(cfg["seed"])
@@ -233,6 +262,12 @@ def run(cfg):
         grad_checkpoint=model.grad_checkpoint,
     )
     logger.close()
+
+    # Auto-save the plot-source artifacts (+ Figure 1) into results/<name>/ so a
+    # bare `chrono train` populates results/ without a separate command. On by
+    # default; set save_results: false to skip.
+    if cfg.get("save_results", True):
+        save_results(cfg["output_dir"])
 
     push = cfg.get("push_to_hub")
     if push and push.get("enabled"):

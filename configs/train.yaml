@@ -46,6 +46,9 @@ eval_every: 200              # periodic in-stage validation -> a real val curve 
                              # stages (stage1 is ~6 steps) therefore need a per-stage eval_every ~1.
 val_max_blocks: 500          # cap the random held-out set so EACH eval covers the whole val set cheaply
 save_every: 500
+save_results: true           # after training, copy metrics.csv/config/summary + render figure1 into
+                             # results/<name>/ (git-friendly; weights go to the Hub, not here). Commit/push
+                             # with scripts/publish_results.sh. false = skip the auto-save.
 
 # Integrations. Loss curves always go to output_dir/metrics.csv (the source for
 # Figures 1-2) regardless of W&B.

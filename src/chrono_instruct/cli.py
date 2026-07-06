@@ -11,6 +11,7 @@ Commands:
   figure   -- plot Figure 1 (one run), 2 (vintage sweep), or 3 (win rates)
 """
 import argparse
+import os
 
 import yaml
 
@@ -131,7 +132,9 @@ def main(argv=None):
     elif args.cmd == "figure":
         from . import figures
         if args.kind == "1":
-            figures.figure1(args.run, args.out or "figure1.png")
+            # Default the image INTO the run dir (next to its metrics.csv), not cwd,
+            # so `chrono figure --run <dir>` never litters the project root.
+            figures.figure1(args.run, args.out or os.path.join(args.run, "figure1.png"))
         elif args.kind == "2":
             figures.figure2(args.runs, args.out or "figure2.png")
         else:
