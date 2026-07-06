@@ -18,11 +18,17 @@ infrastructure for downstream, lookahead-bias-free prediction work.
   base.
 - Config-driven: one run = one vintage on one GPU. Sweep vintages by changing one
   line; fan out across GPUs or SLURM with the scripts in `scripts/`.
+- Training robustness: per-stage cosine schedule with a `min_lr` floor and warmup,
+  gradient checkpointing, and optional **early stopping** that restores the
+  best-val weights and carries them into the next stage.
 - Unified inference (`generate` / `embed`) for any vintage, base or instruct.
 - Reproduces the president-prediction consistency test (Table 2), the SFT loss
   curves (Figures 1-2, from `metrics.csv`), and the AlpacaEval length-controlled
   win-rate vs Qwen-1.5-1.8B-Chat (Figure 3, judged by the `alpaca_eval` package).
-- Optional, config-toggled Weights & Biases logging and Hugging Face Hub push.
+- Config-toggled Weights & Biases logging and Hugging Face Hub push (both default
+  on, each degrades gracefully). After a run, loss logs + figures auto-save to
+  `results/<name>/`; the sequential sweep publishes each vintage to GitHub + HF and
+  can **email you** as each one finishes.
 
 ## Layout
 
@@ -30,9 +36,10 @@ infrastructure for downstream, lookahead-bias-free prediction work.
 src/chrono_instruct/   model.py  data.py  train.py  infer.py  eval.py  cli.py
                        tracking.py  hub.py  figures.py   # logging / HF push / plots
 configs/               train.yaml  eval.yaml
-scripts/               lambda_setup.sh  launch_local.sh  slurm_array.sbatch
+scripts/               lambda_setup.sh  train_all_vintages.sh  make_vintage_config.py
+                       publish_results.sh  notify_email.py  launch_local.sh  slurm_array.sbatch
 tests/                 test_smoke.py        # tiny CPU end-to-end, no download
-docs/brainstorms/      requirements doc
+docs/                  running-guide.md  walkthrough/   # end-to-end guide + line-by-line walkthrough
 ```
 
 Extras: `pip install -e '.[viz]'` for figures + W&B, `pip install -e '.[eval]'`
@@ -60,6 +67,12 @@ Figures and publishing (see `configs/eval.yaml` for the full Figure 3 pipeline):
 chrono figure  --kind 1 --run runs/chrono-instruct-2020          # Fig 1: one run's loss curves
 chrono figure  --kind 2 --runs runs/chrono-instruct-*            # Fig 2: val loss across vintages
 chrono push    --repo runs/chrono-instruct-2020/final --to <user>/chrono-instruct-v1-20201231
+```
+
+Sequential vintage sweep on one GPU (trains, publishes, optionally emails per vintage):
+
+```bash
+bash scripts/train_all_vintages.sh 1999 2005 2010 2015 2024      # omit years already trained
 ```
 
 ## Attribution & licenses

@@ -44,6 +44,28 @@ hf auth login          # paste a WRITE token (required for pushing models)
 ```
 Cached under `$HF_HOME` (persistent FS). Never hardcode it.
 
+## 3b. GitHub identity + credentials (for publishing results)
+
+Publishing loss logs/figures back to GitHub (§8, and automatically during the
+sweep) needs a git **identity** and **non-interactive push credentials** on the
+box — set these once or the first `git commit`/`git push` will fail:
+
+```bash
+git config --global user.name  "Huanyu Zhang"           # both name AND email, or commits fail
+git config --global user.email "zhanghuanyu0619@gmail.com"
+git config --global credential.helper store             # cache the PAT after the next push
+```
+
+Then do one `git push` and enter your username + a **fine-grained PAT** (Settings →
+Developer settings → Fine-grained tokens, scoped to this repo with **Contents:
+read/write**) as the password. `credential.helper store` caches it to
+`~/.git-credentials`, so every later push — including the sweep's per-vintage
+publishes — runs silently. **This matters for the sweep:** an interactive password
+prompt inside an unattended run would hang it.
+
+If the box's `main` has fallen behind `origin/main` (e.g. code was pushed while you
+trained), integrate before pushing: `git pull --rebase origin main`.
+
 ## 4. Verify before training
 
 ```bash
@@ -73,9 +95,24 @@ Edit `configs/train.yaml`:
 - `output_dir` — an **absolute path on the persistent FS**, e.g.
   `/home/ubuntu/persist/runs/chrono-instruct-2020`.
 - `min_confidence` — `10` (paper's strict screen) or `null` (keep all label-0).
-- `wandb.enabled` — `true` to mirror loss curves live (optional).
-- `push_to_hub` — `enabled: true` + your `repo_id` to auto-push `final/` to the
-  Hub when training ends (or push manually later, §8).
+- `wandb.enabled` — **default `true`**; mirrors loss curves live. Needs
+  `wandb login` on the box; if not logged in it silently falls back to CSV-only
+  (never crashes the run).
+- `push_to_hub.enabled` — **default `true`**; pushes `final/` to your `repo_id`
+  when a **complete** run finishes. Partial/smoke runs are skipped (no 7.4 GB
+  upload per tuning run). Needs a WRITE token (§3).
+- `save_results` — **default `true`**; after training, copies `metrics.csv` /
+  `config.yaml` / `summary.json` and renders `figure1.png` into `results/<name>/`
+  automatically (git-friendly; commit/push is still §8).
+
+Per-stage training knobs (already tuned in the config, worth understanding):
+- `early_stop_patience: 3` — stop a stage after 3 evals with no val improvement,
+  restore the **best-val** weights, and continue the next stage from them. `min_delta`
+  (default `null`) sets how much of a drop counts as improvement.
+- `min_lr_ratio: 0.1` — cosine floor at 10 % of each stage's `lr` (not decay-to-0).
+- Per-stage `lr` / `eval_every` / `log_every` — Stage 1 uses a high `lr` (tiny stage,
+  few steps) and `eval_every: 1`; the big stages use standard LRs and coarser logging.
+  `eval_every` is in **optimizer steps**, so keep it well below a stage's step count.
 
 ## 6. Train
 
@@ -145,11 +182,15 @@ For Figure 3 (AlpacaEval), see `configs/eval.yaml`.
 
 ## 8. Publish results to GitHub + checkpoints to Hugging Face
 
-**Logs + figures → GitHub** (small, tracked under `results/`):
+**Logs + figures → GitHub** (small, tracked under `results/`). Training already
+*saves* `results/<name>/` locally (the `save_results` step); this script commits +
+pushes it (and renders the figure if training didn't):
 ```bash
 bash scripts/publish_results.sh /home/ubuntu/persist/runs/chrono-instruct-2020 chrono-instruct-2020
 ```
-This copies `metrics.csv`, renders `results/chrono-instruct-2020/figure1.png`, and pushes.
+Needs the GitHub identity + cached PAT from §3b, or the `git commit`/`git push` step
+fails. It degrades gracefully — a missing `chrono`/figure or push-credential failure
+warns instead of aborting.
 
 **Checkpoints → Hugging Face Hub** (large weights). `<hf-user>` must be your HF
 namespace from `hf auth whoami` (NOT your GitHub username), with a **Write** token:
@@ -182,13 +223,26 @@ so only `model_repo`/`output_dir`/`repo_id` change.
 **Sequential, one GPU** (the common case — fine-tune all vintages back-to-back,
 each auto-published to GitHub + HF):
 ```bash
-bash scripts/train_all_vintages.sh                 # 1999 2005 2010 2015 2020 2024
-bash scripts/train_all_vintages.sh 1999 2020       # or a subset
+bash scripts/train_all_vintages.sh                       # 1999 2005 2010 2015 2020 2024
+bash scripts/train_all_vintages.sh 1999 2005 2010 2015 2024   # skip an already-trained vintage
 ```
 It derives a per-vintage config from `configs/train.yaml` (overriding `model_repo`,
-`output_dir`, and the HF `repo_id`), trains, and runs `publish_results.sh`. Set
-`HF_USER` / `PERSIST` as env vars if they differ from the defaults. Rough budget:
-~3 h/vintage on an 80GB H100 → ~15–24 h for all six (cache built once).
+`output_dir`, and the HF `repo_id`), trains, runs `publish_results.sh`, and (if
+configured, §12) emails you as each vintage finishes. A single vintage failing is
+logged and skipped — the sweep continues and prints a `trained:` / `failed:` summary
+at the end. Set `HF_USER` / `PERSIST` as env vars if they differ from the defaults.
+Rough budget: ~3 h/vintage on an 80GB H100 → ~15–24 h for all six (cache built once).
+
+**Prerequisites for an unattended sweep:** `hf auth login` (§3), the GitHub identity
++ cached PAT (§3b, or the per-vintage GitHub publish hangs on a password prompt), and
+optionally `wandb login` and the email vars (§12). Run it inside tmux (§11).
+
+**Comparable curves:** every vintage must use the *same* `configs/train.yaml`
+hyperparameters, or the overlaid Figure 2 isn't apples-to-apples. If you retuned the
+config after training an earlier vintage, retrain that vintage too (the data cache is
+shared, so it's just GPU time). Verify with
+`diff <run_dir>/config.yaml configs/train.yaml` — only `model_repo`/`output_dir`/
+`repo_id` should differ.
 
 **Parallel, multi-GPU / cluster:** `scripts/launch_local.sh` (one vintage per GPU)
 or `scripts/slurm_array.sbatch` (SLURM array).
@@ -206,6 +260,32 @@ tmux new -s chrono     # detach: Ctrl-b d   |   reattach: tmux attach -t chrono
 Run the §2 setup (and everything after) **inside** the tmux session. Activate the
 venv *inside* tmux, not before `tmux new` — a fresh tmux shell won't inherit it.
 After `tmux attach`, the activation persists.
+
+## 12. Email notifications (optional)
+
+Get an email as each vintage finishes (or fails), so you don't babysit the sweep.
+`scripts/train_all_vintages.sh` calls `scripts/notify_email.py`, which reads SMTP
+credentials from the **environment** — nothing is committed. With Gmail:
+
+1. Enable 2-Step Verification on the Google account, then create an **App Password**
+   (Google Account → Security → App passwords). It's a 16-char token, *not* your
+   login password.
+2. Export the vars in the same shell (inside tmux) before launching the sweep:
+   ```bash
+   export NOTIFY_SMTP_USER="zhanghuanyu0619@gmail.com"
+   export NOTIFY_SMTP_PASS="<16-char app password>"    # NOT your Google password
+   # export NOTIFY_TO="someone-else@example.com"       # optional; defaults to SMTP_USER
+   ```
+
+You'll get one email per vintage (`[chrono] chrono-instruct-1999 finished ✅` with the
+run's `summary.json` in the body), a failure email if one dies, and a final
+sweep-summary email. If the vars are unset the sweep runs identically, just without
+email — and a send failure never aborts training. Test it standalone:
+```bash
+python scripts/notify_email.py --subject "[chrono] test" --body "hello from the box"
+```
+For a *push* notification instead of email, a webhook service (e.g. `ntfy.sh`) is a
+drop-in alternative — swap the `notify()` body in the sweep script for a `curl`.
 
 ## Gotchas
 - **Shut down notebook kernels before training:** a live JupyterLab kernel keeps

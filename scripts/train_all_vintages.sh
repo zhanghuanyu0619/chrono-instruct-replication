@@ -11,7 +11,12 @@
 # Checkpoints go to the HF Hub if push_to_hub.enabled is true in the base config
 # (repo_id is overridden per vintage). Loss logs + figures go to GitHub via
 # publish_results.sh after each run.
+#
+# Email on each vintage finishing: export NOTIFY_SMTP_USER / NOTIFY_SMTP_PASS
+# (see scripts/notify_email.py). If unset, the sweep runs the same, just no email.
 set -euo pipefail
+
+notify() { python scripts/notify_email.py --subject "$1" --body "$2" || true; }
 
 PERSIST="${PERSIST:-$HOME/persist}"
 HF_USER="${HF_USER:-HZ0619}"
@@ -35,13 +40,17 @@ for Y in "${YEARS[@]}"; do
        && chrono train --config "$CFG"; then
         bash scripts/publish_results.sh "$OUT" "$NAME" || echo "WARN: publish failed for $NAME (continuing)"
         OK+=("$Y")
+        notify "[chrono] $NAME finished ✅" "$(cat "$OUT/summary.json" 2>/dev/null || echo "done — see $OUT")"
     else
         echo "ERROR: $NAME failed (base repo missing? OOM? auth?) — continuing to next vintage"
         FAILED+=("$Y")
+        notify "[chrono] $NAME FAILED ❌" "Vintage $Y failed — check the sweep log on the box ($OUT)."
     fi
 done
 
 echo "==================  sweep done  =================="
 echo "  trained: ${OK[*]:-none}"
 echo "  failed:  ${FAILED[*]:-none}"
+notify "[chrono] sweep done — trained: ${OK[*]:-none} | failed: ${FAILED[*]:-none}" \
+       "Vintage sweep complete. Trained: ${OK[*]:-none}. Failed: ${FAILED[*]:-none}."
 [ ${#FAILED[@]} -eq 0 ]   # exit non-zero if any vintage failed, so CI/`&&` chains notice
