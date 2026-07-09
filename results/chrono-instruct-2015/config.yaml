@@ -1,0 +1,54 @@
+model_repo: manelalab/chrono-gpt-v1-20151231
+dataset: manelalab/ChronoInstruct-SFT
+output_dir: /home/ubuntu/persist/runs/chrono-instruct-2015
+cache_dir: cache
+min_confidence: 10
+block_size: 1792
+seed: 123
+batch_size: 8
+grad_accum: 4
+grad_checkpoint: true
+warmup_ratio: 0.03
+weight_decay: 0.0
+grad_clip: 1.0
+min_lr_ratio: 0.1
+early_stop_patience: 3
+min_delta: null
+val_fraction: 0.05
+log_every: 20
+eval_every: 200
+val_max_blocks: 500
+save_every: 500
+wandb:
+  enabled: true
+  project: chrono-instruct
+  name: null
+push_to_hub:
+  enabled: true
+  repo_id: HZ0619/chrono-instruct-v1-20151231
+  final_stage: stage3_tulu
+  private: true
+stages:
+- name: stage1_scratch
+  sources:
+  - scratch
+  epochs: 3
+  lr: 0.0003
+  eval_every: 1
+  log_every: 1
+- name: stage2_self_instruct
+  sources:
+  - self-instruct
+  - self-generated
+  - gpt-3
+  epochs: 2
+  lr: 0.0003
+  eval_every: 20
+  log_every: 20
+- name: stage3_tulu
+  sources:
+  - tulu
+  epochs: 2
+  lr: 0.0003
+  eval_every: 200
+  log_every: 100
