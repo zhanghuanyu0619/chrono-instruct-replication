@@ -39,7 +39,7 @@ configs/               train.yaml  eval.yaml
 scripts/               lambda_setup.sh  train_all_vintages.sh  make_vintage_config.py
                        publish_results.sh  launch_local.sh  slurm_array.sbatch
 tests/                 test_smoke.py        # tiny CPU end-to-end, no download
-docs/                  running-guide.md  walkthrough/   # end-to-end guide + line-by-line walkthrough
+docs/                  guides/  walkthrough/   # split end-to-end guides + line-by-line walkthrough
 ```
 
 Extras: `pip install -e '.[viz]'` for figures + W&B, `pip install -e '.[eval]'`
@@ -48,7 +48,7 @@ for the AlpacaEval (Figure 3) judge + the Qwen reference model.
 ## Quickstart
 
 For a GPU box (Lambda H100), run `bash scripts/lambda_setup.sh` for the proven
-environment (stable `cu126` torch, not the upstream nightly); see `docs/running-guide.md`
+environment (stable `cu126` torch, not the upstream nightly); see `docs/guides/`
 for the full end-to-end workflow. Locally:
 
 ```bash
