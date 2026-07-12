@@ -1,0 +1,88 @@
+{
+  "vintage": 2010,
+  "cutoff": 2010,
+  "repo": "HZ0619/chrono-instruct-v1-20101231",
+  "table2_president": {
+    "rows": [
+      {
+        "target_year": 2017,
+        "target": "Donald Trump",
+        "prediction": "John H",
+        "correct": false,
+        "past_cutoff": true
+      },
+      {
+        "target_year": 2021,
+        "target": "Joe Biden",
+        "prediction": "Bill Clinton",
+        "correct": false,
+        "past_cutoff": true
+      },
+      {
+        "target_year": 2025,
+        "target": "Donald Trump",
+        "prediction": "George W",
+        "correct": false,
+        "past_cutoff": true
+      }
+    ],
+    "summary": {
+      "n": 3,
+      "pre_cutoff_correct": "0/0",
+      "post_cutoff_correct": "0/3",
+      "consistent_rows": "3/3"
+    }
+  },
+  "table3_major_events": {
+    "rows": [
+      {
+        "event_year": 2001,
+        "answer": "scandal",
+        "prediction": "scandal, which",
+        "correct": true,
+        "past_cutoff": false
+      },
+      {
+        "event_year": 2003,
+        "answer": "SARS",
+        "prediction": "the H1",
+        "correct": false,
+        "past_cutoff": false
+      },
+      {
+        "event_year": 2008,
+        "answer": "crisis",
+        "prediction": "crisis, which",
+        "correct": true,
+        "past_cutoff": false
+      },
+      {
+        "event_year": 2016,
+        "answer": "referendum",
+        "prediction": ".",
+        "correct": false,
+        "past_cutoff": true
+      },
+      {
+        "event_year": 2020,
+        "answer": "COVID",
+        "prediction": "Black Death.",
+        "correct": false,
+        "past_cutoff": true
+      },
+      {
+        "event_year": 2022,
+        "answer": "ChatGPT",
+        "prediction": "\"The Turing",
+        "correct": false,
+        "past_cutoff": true
+      }
+    ],
+    "summary": {
+      "n": 6,
+      "pre_cutoff_correct": "2/3",
+      "post_cutoff_correct": "0/3",
+      "consistent_rows": "5/6"
+    }
+  }
+}
