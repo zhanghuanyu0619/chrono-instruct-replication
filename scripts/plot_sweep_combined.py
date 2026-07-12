@@ -97,8 +97,14 @@ def nice_ticks(lo, hi, n=4):
 
 
 def build_svg():
-    data = {y: read_val_series(os.path.join(RESULTS, f"chrono-instruct-{y}")) for y in YEARS}
-    finals = {y: final_val(os.path.join(RESULTS, f"chrono-instruct-{y}")) for y in YEARS}
+    # Only plot vintages whose result dir exists, so a partial sweep still renders.
+    years = [y for y in YEARS if os.path.isdir(os.path.join(RESULTS, f"chrono-instruct-{y}"))]
+    if not years:
+        raise SystemExit(f"[plot] no vintage result dirs under {RESULTS} — nothing to plot")
+    if len(years) < len(YEARS):
+        print(f"[plot] rendering {len(years)}/{len(YEARS)} vintages present: {years}")
+    data = {y: read_val_series(os.path.join(RESULTS, f"chrono-instruct-{y}")) for y in years}
+    finals = {y: final_val(os.path.join(RESULTS, f"chrono-instruct-{y}")) for y in years}
 
     W, H = 1360, 880
     s = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
@@ -109,14 +115,13 @@ def build_svg():
     s.append(f'<text x="24" y="40" font-size="22" font-weight="700" fill="{INK}">'
              'ChronoGPT-Instruct SFT replication — validation loss across the vintage sweep</text>')
     s.append(f'<text x="24" y="65" font-size="14" fill="{MUTED}">'
-             '6 chronologically-consistent vintages · 3-stage curriculum · seed 123 · block 1792 · '
-             'all runs converged, none failed</text>')
+             '6 chronologically-consistent vintages · 3-stage curriculum · seed 123 · block 1792</text>')
 
     # Legend — horizontal strip under the subtitle (keeps the right margin clear)
     lx0, ly = 24, 92
     s.append(f'<text x="{lx0}" y="{ly+4}" font-size="12.5" font-weight="600" fill="{MUTED}">cutoff year:</text>')
     cx = lx0 + 92
-    for yr in YEARS:
+    for yr in years:
         s.append(f'<line x1="{cx}" y1="{ly}" x2="{cx+22}" y2="{ly}" stroke="{YEAR_COLOR[yr]}" stroke-width="3"/>')
         s.append(f'<circle cx="{cx+11}" cy="{ly}" r="3.4" fill="{YEAR_COLOR[yr]}"/>')
         s.append(f'<text x="{cx+29}" y="{ly+4}" font-size="12.5" fill="{INK}">{yr}</text>')
@@ -128,8 +133,8 @@ def build_svg():
     avail = W - left - right_pad
     pw = (avail - 2 * gap) / 3
     for ci, stage in enumerate(STAGES):
-        allv = [v for y in YEARS if stage in data[y] for v in data[y][stage][1]]
-        allx = [v for y in YEARS if stage in data[y] for v in data[y][stage][0]]
+        allv = [v for y in years if stage in data[y] for v in data[y][stage][1]]
+        allx = [v for y in years if stage in data[y] for v in data[y][stage][0]]
         ylo, yhi = min(allv), max(allv)
         pad = (yhi - ylo) * 0.08 or 0.05
         xlo, xhi = min(allx), max(allx)
@@ -145,7 +150,7 @@ def build_svg():
             lbl = f'{int(tv/1000)}k' if tv >= 1000 else str(int(tv))
             s.append(f'<text x="{gx:.1f}" y="{P.y+P.h+18:.1f}" font-size="11" text-anchor="middle" fill="{MUTED}">{lbl}</text>')
         # lines
-        for yr in YEARS:
+        for yr in years:
             if stage not in data[yr]:
                 continue
             xs, ys = data[yr][stage]
@@ -178,7 +183,7 @@ def build_svg():
         s.append(f'<text x="{gx:.1f}" y="{BP.y+BP.h+24:.1f}" font-size="12.5" font-weight="600" '
                  f'text-anchor="{anchor}" fill="{INK}">{esc(STAGE_TITLE[stage])}</text>')
     ends = {}
-    for yr in YEARS:
+    for yr in years:
         ys = [finals[yr][st] for st in STAGES]
         ends[yr] = ys[-1]
         pts = " ".join(f'{BP.px(i):.1f},{BP.py(v):.1f}' for i, v in enumerate(ys))
@@ -191,8 +196,8 @@ def build_svg():
     # with a short leader from each line's endpoint.
     xe = BP.px(len(STAGES) - 1)
     lab_x = xe + 30
-    y0 = BP.py(ends[YEARS[0]]) - 8
-    for i, yr in enumerate(YEARS):
+    y0 = BP.py(ends[years[0]]) - 8
+    for i, yr in enumerate(years):
         ly_ = y0 + i * 20
         ey = BP.py(ends[yr])
         s.append(f'<path d="M{xe+5:.1f},{ey:.1f} L{lab_x-6:.1f},{ly_-4:.1f}" fill="none" '

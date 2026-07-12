@@ -18,9 +18,9 @@ data screen and trains all six headline vintages
 (τ ∈ {1999, 2005, 2010, 2015, 2020, 2024}) through the 3-stage curriculum
 (scratch → GPT-3 self-instruct → Tulu-3), one model per knowledge cutoff, from the
 matching `chrono-gpt-v1` base (~1.55 B params, 52-layer modded-nanoGPT U-net,
-`model_dim` 1536, 12 heads, vocab 50304, context 1792). **Headline result:** all
-six runs converged (0 failures), the 3-stage curriculum chains cleanly (each stage
-resumes near the prior stage's endpoint and improves), and the final Stage-3
+`model_dim` 1536, 12 heads, vocab 50304, context 1792). **Headline result:** the
+3-stage curriculum chains cleanly (each stage resumes near the prior stage's
+endpoint and improves), and the final Stage-3
 validation cross-entropy falls **monotonically** as the cutoff moves forward —
 0.8691 (1999) → 0.7855 (2024) — exactly the "later vintage = better language
 model, not leakage" structure the paper predicts. The fine-tuned models are on the
@@ -105,7 +105,7 @@ in each `results/chrono-instruct-{τ}/metrics.csv`, the source for Figures 1–2
 peak **50.4 GB** GPU, seed **123**, block **1792**, `batch_size` **8** ×
 `grad_accum` **4** (effective batch 32), gradient checkpointing on. All three
 stages use `lr 3e-4` with a per-stage cosine schedule (warmup 0.03, floor
-`0.1·lr`); epochs 3 / 2 / 2 for stages 1 / 2 / 3. **Sweep: 0 failures.**
+`0.1·lr`); epochs 3 / 2 / 2 for stages 1 / 2 / 3.
 
 **What the numbers say.**
 - **Monotone improvement with cutoff.** Stage-3 loss falls strictly as τ advances
@@ -176,39 +176,43 @@ deviations are both documented, per the paper's "specifies the *what*, not the
 
 ---
 
-## 6. Pending exhibits — exact reproduction commands
+## 6. Pending exhibits — how to run, and where the results land
 
-These are **coded and staged, not yet run.** They are next steps, not results.
+These are **coded and staged, not yet run.** Each exhibit saves its results next to
+the training artifacts and an aggregator collects them into this report's folder, so
+nothing is gathered by hand. When run, the collected tables appear in
+[`eval_summary.md`](eval_summary.md) (and `eval_results.json`) in this directory.
 
-**Tables 2 & 3 — chronological-consistency tests** (president prediction + major
-world events). One command runs both:
-
-```bash
-chrono eval --repo HZ0619/chrono-instruct-v1-20201231 --cutoff 2020
-# or, against a local run dir:
-python scripts/full_eval.py --config configs/train.yaml \
-    --repo runs/chrono-instruct-2020/final --cutoff 2020 --consistency
-```
-
-Expected pattern (paper): correct on the majority of *pre-cutoff* items, **0/N**
-post-cutoff. (`eval.py:president_test`, `major_events_test`.)
-
-**Figure 3 — AlpacaEval LC win-rate vs Qwen-1.5-1.8B-Chat** (paper reports
-~54–62%). Three steps (`configs/eval.yaml`), judge needs `OPENAI_API_KEY`:
+**One command, all vintages** (defaults to the HF-published models):
 
 ```bash
-chrono alpaca  --backend chrono --repo runs/chrono-instruct-2020/final \
-               --name chrono-2020 --out out/chrono-2020.json
-chrono alpaca  --backend hf --repo Qwen/Qwen1.5-1.8B-Chat --name qwen --out out/qwen.json
-chrono winrate --model out/chrono-2020.json --reference out/qwen.json
-# then: chrono figure --kind 3 --results ...
+bash scripts/eval_all_vintages.sh              # Tables 2-3 for all six vintages
+ALPACA=1 bash scripts/eval_all_vintages.sh     # also Figure 3 (needs OPENAI_API_KEY)
 ```
+
+It writes `results/chrono-instruct-{τ}/eval.json` per vintage (the way training
+writes `metrics.csv`) and aggregates them into
+`results/replication-report/{eval_results.json, eval_summary.md}`. Single vintage:
+`python scripts/run_eval.py --vintage 2020`.
+
+**Tables 2 & 3 — chronological-consistency tests** (U.S. president prediction; major
+world events). **Punchline:** a chronologically consistent model is **correct on
+items before its cutoff and wrong (0/N) after it** — being blind to post-cutoff facts
+is the no-look-ahead guarantee *working*, not a failure. (`eval.py:president_test`,
+`major_events_test`.)
+
+**Figure 3 — AlpacaEval LC win-rate vs Qwen-1.5-1.8B-Chat.** **Punchline:** despite
+the chronological constraint (an older, smaller model trained on far less data), the
+instruct model still follows instructions competitively — the paper reports a
+**~54–62%** length-controlled win-rate. The sweep generates the Qwen reference once
+and judges each vintage (`OPENAI_API_KEY` required); the low-level 3-step pipeline is
+in `configs/eval.yaml`.
 
 **Uncapped full-validation re-scoring** (`scripts/full_eval.py`). Training-time
 validation caps the held-out set at `val_max_blocks: 500`, which made Stage-1's
-~3-block validation noisy. Re-scoring the *same seeded holdout* in full (no cap,
-no re-training) will tighten the Stage-1 numbers without changing which examples
-are held out:
+~3-block validation noisy. Re-scoring the *same seeded holdout* in full (no cap, no
+re-training) tightens the Stage-1 numbers without changing which examples are held
+out:
 
 ```bash
 python scripts/full_eval.py --config configs/train.yaml \

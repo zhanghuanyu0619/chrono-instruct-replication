@@ -36,10 +36,12 @@ infrastructure for downstream, lookahead-bias-free prediction work.
 src/chrono_instruct/   model.py  data.py  train.py  infer.py  eval.py  cli.py
                        tracking.py  hub.py  figures.py   # logging / HF push / plots
 configs/               train.yaml  eval.yaml
-scripts/               lambda_setup.sh  train_all_vintages.sh  make_vintage_config.py
-                       publish_results.sh  launch_local.sh  slurm_array.sbatch
+scripts/               lambda_setup.sh  train_all_vintages.sh  eval_all_vintages.sh
+                       make_vintage_config.py  publish_results.sh  launch_local.sh
+                       full_eval.py  plot_sweep_combined.py  inference_demo.py  push_model_cards.py
+archive/               slurm_array.sbatch   # off-main-path SLURM launcher, kept for reference
 tests/                 test_smoke.py        # tiny CPU end-to-end, no download
-docs/                  guides/  walkthrough/   # split end-to-end guides + line-by-line walkthrough
+docs/                  guides/              # split end-to-end replication guides
 ```
 
 Extras: `pip install -e '.[viz]'` for figures + W&B, `pip install -e '.[eval]'`

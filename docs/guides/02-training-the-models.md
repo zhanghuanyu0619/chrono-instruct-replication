@@ -125,7 +125,7 @@ shared, so it's just GPU time). Verify with
 `repo_id` should differ.
 
 **Parallel, multi-GPU / cluster:** `scripts/launch_local.sh` (one vintage per GPU)
-or `scripts/slurm_array.sbatch` (SLURM array).
+or `archive/slurm_array.sbatch` (SLURM array — archived, off the main path).
 
 **Detach for a hands-off sweep (Lambda browser terminal / JupyterLab).** These
 persist server-side, so a long job survives you closing the browser tab. For a fully

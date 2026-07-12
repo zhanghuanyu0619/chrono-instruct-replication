@@ -42,6 +42,17 @@ for Y in "${YEARS[@]}"; do
     fi
 done
 
+# Refresh the combined sweep figure (results/combined/sweep_combined.svg) from the
+# published per-vintage results and push it, so the replication report's embedded
+# figure auto-updates after every sweep. Pure-stdlib generator, robust to a partial
+# sweep (only plots vintages whose results/ dir exists). Best-effort — never aborts.
+if python scripts/plot_sweep_combined.py; then
+    git add results/combined/sweep_combined.svg 2>/dev/null \
+        && git commit -q -m "results: refresh combined sweep figure" 2>/dev/null \
+        && git push -q 2>/dev/null && echo "published combined figure" \
+        || echo "WARN: combined figure regenerated but not pushed (continuing)"
+fi
+
 echo "==================  sweep done  =================="
 echo "  trained: ${OK[*]:-none}"
 echo "  failed:  ${FAILED[*]:-none}"

@@ -48,3 +48,19 @@ python scripts/full_eval.py --config configs/train.yaml \
     --repo /home/ubuntu/persist/runs/chrono-instruct-2020/final --cutoff 2020 --consistency
 ```
 See [03 §Full uncapped validation eval](03-figures-1-2-loss-curves.md#full-uncapped-validation-eval).
+
+## All vintages at once (saved + collected)
+
+To evaluate every vintage and collect results without running them one by one:
+
+```bash
+bash scripts/eval_all_vintages.sh            # Tables 2-3, all vintages, from the HF repos
+bash scripts/eval_all_vintages.sh 2020 2024  # a subset
+REPO_DIR=/home/ubuntu/persist/runs bash scripts/eval_all_vintages.sh   # use local checkpoints
+```
+
+By default it evaluates the HF-published models `HZ0619/chrono-instruct-v1-<Y>1231`.
+Each vintage's results are saved to `results/chrono-instruct-<Y>/eval.json` (like
+training saves `metrics.csv`), then aggregated into
+`results/replication-report/{eval_results.json, eval_summary.md}` for the report.
+Add `ALPACA=1` to also run Figure 3 (see [06](06-figure-3-alpacaeval.md)).

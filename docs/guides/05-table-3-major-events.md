@@ -34,3 +34,9 @@ against the PDF if you need a byte-faithful reproduction.
 full-validation loss — see
 [04 §Alongside the full val loss](04-table-2-president-consistency.md#alongside-the-full-val-loss)
 and [03 §Full uncapped validation eval](03-figures-1-2-loss-curves.md#full-uncapped-validation-eval).
+
+## All vintages at once
+
+The major-events test runs together with Table 2 in the same commands — see
+[04 §All vintages at once](04-table-2-president-consistency.md#all-vintages-at-once-saved--collected).
+`bash scripts/eval_all_vintages.sh` saves and collects both tables for every vintage.

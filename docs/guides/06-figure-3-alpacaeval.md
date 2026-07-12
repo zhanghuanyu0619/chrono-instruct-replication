@@ -43,3 +43,15 @@ Collect `{year: winrate}` across vintages into a JSON, then:
 chrono figure --kind 3 --results <winrate-json>
 ```
 Default output `figure3.png`; override with `--out`.
+
+## All vintages at once
+
+To run Figure 3 across every vintage and collect win-rates automatically:
+
+```bash
+ALPACA=1 bash scripts/eval_all_vintages.sh
+```
+
+It generates the Qwen reference once, judges each vintage (needs `OPENAI_API_KEY`),
+and writes the win-rates into `results/replication-report/eval_summary.md` alongside
+Tables 2-3. Per-vintage detail lands in `results/chrono-instruct-<Y>/eval.json`.
