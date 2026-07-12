@@ -26,3 +26,6 @@ docs/env-setup.md
 # OS / editor
 .DS_Store
 .ipynb_checkpoints/
+
+# Personal code walkthrough — kept locally, not synced to GitHub
+docs/walkthrough/

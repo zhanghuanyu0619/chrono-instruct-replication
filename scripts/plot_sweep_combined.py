@@ -20,8 +20,12 @@ import json
 import os
 import sys
 
-RESULTS = sys.argv[1] if len(sys.argv) > 1 else "results"
-OUT_SVG = sys.argv[2] if len(sys.argv) > 2 else os.path.join(RESULTS, "sweep_combined.svg")
+# Resolve paths against the repo root (parent of scripts/), never the caller's CWD,
+# so the figure always lands under results/, not wherever the script was invoked.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RESULTS = sys.argv[1] if len(sys.argv) > 1 else os.path.join(REPO_ROOT, "results")
+# Combined artifacts live in results/combined/ (a subfolder), not the results root.
+OUT_SVG = sys.argv[2] if len(sys.argv) > 2 else os.path.join(RESULTS, "combined", "sweep_combined.svg")
 OUT_HTML = sys.argv[3] if len(sys.argv) > 3 else None
 
 YEARS = [1999, 2005, 2010, 2015, 2020, 2024]
@@ -204,6 +208,7 @@ def build_svg():
 
 def main():
     svg = build_svg()
+    os.makedirs(os.path.dirname(OUT_SVG) or ".", exist_ok=True)
     with open(OUT_SVG, "w") as f:
         f.write(svg)
     print(f"wrote {OUT_SVG}")
