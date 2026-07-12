@@ -19,51 +19,59 @@ import torch
 
 from .infer import generate, ENC
 
-# (took_office_year, name) in chronological order — public knowledge.
+# (election_year, name) — the six presidential elections in the paper's Table 2.
+# The prompt DISPLAYS the inauguration year (election_year + 1, e.g. 2001 for the
+# 2000 election), matching the paper's "Took office in ..." template; the knowledge-
+# cutoff comparison keys on the ELECTION year, since who won is only knowable after
+# the November vote. Paper elections: 1992, 2000, 2008, 2016, 2020, 2024.
 PRESIDENTS = [
-    (1993, "Bill Clinton"),
-    (2001, "George W. Bush"),
-    (2009, "Barack Obama"),
-    (2017, "Donald Trump"),
-    (2021, "Joe Biden"),
-    (2025, "Donald Trump"),
+    (1992, "Bill Clinton"),
+    (2000, "George W. Bush"),
+    (2008, "Barack Obama"),
+    (2016, "Donald Trump"),
+    (2020, "Joe Biden"),
+    (2024, "Donald Trump"),
 ]
 
 
-def president_prompt(history, query_year):
-    """Build the Table 2 prompt: three prior presidents, then `query_year` to fill.
+def president_prompt(history, target_election_year):
+    """Build the Table 2 prompt: prior presidents, then the target blank to fill.
 
-    `query_year` is the TARGET's actual inauguration year (not previous+4): two-term
-    presidents make the gap 8 years, so deriving it arithmetically would mis-date the
-    blank (e.g. asking about 2013, mid-Obama, when the target took office in 2017).
+    Presidents are stored by ELECTION year; each is shown by its INAUGURATION year
+    (election + 1 — the January after the November vote, exact for one- and two-term
+    presidents alike), matching the paper's "Took office in ..." wording.
     """
     lines = ["U.S. Presidents in chronological order:"]
-    for year, name in history:
-        lines.append(f"Took office in {year}: President {name}")
-    lines.append(f"Took office in {query_year}: President")
+    for election_year, name in history:
+        lines.append(f"Took office in {election_year + 1}: President {name}")
+    lines.append(f"Took office in {target_election_year + 1}: President")
     return "\n".join(lines)
 
 
 @torch.no_grad()
 def president_test(model, device, cutoff_year):
-    """For each transition, prompt with the three prior presidents and check the prediction.
+    """For each election, prompt with up to three prior presidents and check the prediction.
 
-    Reads exactly two tokens by greedy decoding, as in the paper. Returns a list of
-    dicts; `past_cutoff` flags rows the model should NOT get right if it is
-    chronologically consistent.
+    Reads exactly two tokens by greedy decoding, as in the paper. `past_cutoff` keys on
+    the ELECTION year (who won is only knowable after the November vote), so a
+    chronologically consistent model should be correct only for elections at/before its
+    cutoff. History is clamped to the priors that exist — with only the six paper-tested
+    presidents, the earliest targets get fewer than three priors (the paper's full list
+    carries older presidents so every target has three).
     """
     results = []
     for i in range(0, len(PRESIDENTS)):
-        history = PRESIDENTS[i - 3 : i]
-        target_year, target_name = PRESIDENTS[i]
-        completion = generate(model, device, president_prompt(history, target_year),
+        history = PRESIDENTS[max(0, i - 3) : i]          # up to 3 priors; clamp, never negative-wrap
+        election_year, target_name = PRESIDENTS[i]
+        completion = generate(model, device, president_prompt(history, election_year),
                               max_new_tokens=2, top_k=1, return_completion=True).strip()
         results.append({
-            "target_year": target_year,
+            "election_year": election_year,
+            "took_office_year": election_year + 1,
             "target": target_name,
             "prediction": completion,
             "correct": target_name.split()[0] in completion,
-            "past_cutoff": target_year > cutoff_year,
+            "past_cutoff": election_year > cutoff_year,
         })
     return results
 
