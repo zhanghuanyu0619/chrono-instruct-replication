@@ -53,7 +53,7 @@ def president_test(model, device, cutoff_year):
     chronologically consistent.
     """
     results = []
-    for i in range(3, len(PRESIDENTS)):
+    for i in range(0, len(PRESIDENTS)):
         history = PRESIDENTS[i - 3 : i]
         target_year, target_name = PRESIDENTS[i]
         completion = generate(model, device, president_prompt(history, target_year),
