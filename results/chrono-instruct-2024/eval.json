@@ -5,6 +5,27 @@
   "table2_president": {
     "rows": [
       {
+        "target_year": 1993,
+        "target": "Bill Clinton",
+        "prediction": "George H",
+        "correct": false,
+        "past_cutoff": false
+      },
+      {
+        "target_year": 2001,
+        "target": "George W. Bush",
+        "prediction": "George W",
+        "correct": true,
+        "past_cutoff": false
+      },
+      {
+        "target_year": 2009,
+        "target": "Barack Obama",
+        "prediction": "George W",
+        "correct": false,
+        "past_cutoff": false
+      },
+      {
         "target_year": 2017,
         "target": "Donald Trump",
         "prediction": "Donald J",
@@ -27,10 +48,10 @@
       }
     ],
     "summary": {
-      "n": 3,
-      "pre_cutoff_correct": "2/2",
+      "n": 6,
+      "pre_cutoff_correct": "3/5",
       "post_cutoff_correct": "0/1",
-      "consistent_rows": "3/3"
+      "consistent_rows": "4/6"
     }
   },
   "table3_major_events": {
