@@ -35,7 +35,14 @@ of each other.
 ## Where artifacts live
 
 - **Model weights** → Hugging Face Hub (`HZ0619/chrono-instruct-v1-*`, one repo per
-  vintage). Large; never committed to git.
-- **Loss logs + figures** → `results/` in this repo (small; committed via
-  `publish_results.sh`). Live curves also stream to the `chrono-instruct` wandb
+  vintage). Large; never committed to git. Cards published via
+  `scripts/push_model_cards.py` ([02](02-training-the-models.md#model-cards--making-repos-public)).
+- **Loss logs + figures** → `results/chrono-instruct-<τ>/` (metrics + Fig 1) and
+  `results/combined/sweep_combined.svg` (the combined sweep figure). Small; committed
+  via `publish_results.sh`. Live curves also stream to the `chrono-instruct` wandb
   project.
+- **Evaluation results** → `results/chrono-instruct-<τ>/eval.json` per vintage,
+  aggregated into `results/replication-report/{eval_results.json, eval_summary.md}`
+  by the eval sweep ([04](04-table-2-president-consistency.md)–[06](06-figure-3-alpacaeval.md)).
+- **Replication report** → [`results/replication-report/README.md`](../../results/replication-report/README.md)
+  — the results write-up (data-screen match, loss curves, implementation details).

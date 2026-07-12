@@ -175,6 +175,22 @@ chrono push --repo /home/ubuntu/persist/runs/chrono-instruct-2020/final \
 (or set `push_to_hub.enabled: true` in the config to do this automatically at the
 end of training.)
 
+### Model cards + making repos public
+
+The sweep pushes each vintage **private** by default. Once you're happy with them,
+render a Hugging Face model card for every vintage and flip the repos public in one
+step (needs a **Write** HF token, [01 §3](01-environment-setup.md#3-authenticate-with-hugging-face)):
+```bash
+python scripts/push_model_cards.py --dry-run     # render cards to out/model_cards/, upload nothing
+python scripts/push_model_cards.py               # upload each README.md AND set the repos public
+python scripts/push_model_cards.py --no-publish  # upload cards but leave visibility unchanged
+python scripts/push_model_cards.py 2020 2024     # a subset of vintages
+```
+The card text is `scripts/model_card_template.md` (`{{VINTAGE}}`/`{{CUTOFF_DATE}}`/
+`{{BASE_MODEL}}` rendered per vintage); it leads on the chronological-consistency /
+point-in-time use case and carries an explicit "independent replication, not an
+official manelalab release" disclaimer.
+
 ## Inference + clearing GPU memory
 
 To generate/embed from any vintage (base or instruct), local dir or HF id:

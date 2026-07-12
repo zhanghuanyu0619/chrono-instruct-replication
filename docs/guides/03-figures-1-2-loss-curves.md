@@ -42,7 +42,12 @@ sequential blue ramp (later cutoff = darker):
   showing the monotone improvement as the knowledge cutoff moves forward.
 
 It reads each run's `metrics.csv` (val series) and `summary.json` (`final_val_loss`)
-under `results/chrono-instruct-<year>/`, so run the sweep + publish first.
+under `results/chrono-instruct-<year>/`, so run the sweep + publish first. It tolerates
+a **partial** sweep (only plots the vintages whose result dir exists). You don't
+normally run it by hand: `train_all_vintages.sh` regenerates and pushes
+`results/combined/sweep_combined.svg` at the end of every sweep, and the
+[replication report](../../results/replication-report/README.md) embeds that path — so
+the report's figure stays current automatically.
 
 ## Full uncapped validation eval
 
