@@ -108,10 +108,21 @@ def major_events_test(model, device, cutoff_year):
 
 
 def alpaca_instructions(n=None):
-    """The AlpacaEval instruction set (805 prompts); `n` limits it for quick tests."""
-    from datasets import load_dataset
-    ds = load_dataset("tatsu-lab/alpaca_eval", "alpaca_eval", split="eval", trust_remote_code=True)
-    items = [{"instruction": r["instruction"]} for r in ds]
+    """The AlpacaEval instruction set (805 prompts); `n` limits it for quick tests.
+
+    Loads the raw JSON straight from the Hub. The old
+    load_dataset("tatsu-lab/alpaca_eval", "alpaca_eval", split="eval",
+    trust_remote_code=True) relied on a dataset *loading script*, which
+    `datasets` >= 3.0 refuses to run ("Dataset scripts are no longer supported")
+    and which no longer honors trust_remote_code. Downloading alpaca_eval.json
+    directly is version-proof and needs no `datasets`.
+    """
+    import json
+    from huggingface_hub import hf_hub_download
+    path = hf_hub_download("tatsu-lab/alpaca_eval", "alpaca_eval.json", repo_type="dataset")
+    with open(path) as f:
+        data = json.load(f)
+    items = [{"instruction": r["instruction"]} for r in data]
     return items[:n] if n else items
 
 
