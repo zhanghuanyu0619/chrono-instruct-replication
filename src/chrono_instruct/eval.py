@@ -19,59 +19,51 @@ import torch
 
 from .infer import generate, ENC
 
-# (election_year, name) — the six presidential elections in the paper's Table 2.
-# The prompt DISPLAYS the inauguration year (election_year + 1, e.g. 2001 for the
-# 2000 election), matching the paper's "Took office in ..." template; the knowledge-
-# cutoff comparison keys on the ELECTION year, since who won is only knowable after
-# the November vote. Paper elections: 1992, 2000, 2008, 2016, 2020, 2024.
+# (took_office_year, name) in chronological order — public knowledge.
 PRESIDENTS = [
-    (1992, "Bill Clinton"),
-    (2000, "George W. Bush"),
-    (2008, "Barack Obama"),
-    (2016, "Donald Trump"),
-    (2020, "Joe Biden"),
-    (2024, "Donald Trump"),
+    (1993, "Bill Clinton"),
+    (2001, "George W. Bush"),
+    (2009, "Barack Obama"),
+    (2017, "Donald Trump"),
+    (2021, "Joe Biden"),
+    (2025, "Donald Trump"),
 ]
 
 
-def president_prompt(history, target_election_year):
-    """Build the Table 2 prompt: prior presidents, then the target blank to fill.
+def president_prompt(history, query_year):
+    """Build the Table 2 prompt: three prior presidents, then `query_year` to fill.
 
-    Presidents are stored by ELECTION year; each is shown by its INAUGURATION year
-    (election + 1 — the January after the November vote, exact for one- and two-term
-    presidents alike), matching the paper's "Took office in ..." wording.
+    `query_year` is the TARGET's actual inauguration year (not previous+4): two-term
+    presidents make the gap 8 years, so deriving it arithmetically would mis-date the
+    blank (e.g. asking about 2013, mid-Obama, when the target took office in 2017).
     """
     lines = ["U.S. Presidents in chronological order:"]
-    for election_year, name in history:
-        lines.append(f"Took office in {election_year + 1}: President {name}")
-    lines.append(f"Took office in {target_election_year + 1}: President")
+    for year, name in history:
+        lines.append(f"Took office in {year}: President {name}")
+    lines.append(f"Took office in {query_year}: President")
     return "\n".join(lines)
 
 
 @torch.no_grad()
 def president_test(model, device, cutoff_year):
-    """For each election, prompt with up to three prior presidents and check the prediction.
+    """For each transition, prompt with the three prior presidents and check the prediction.
 
-    Reads exactly two tokens by greedy decoding, as in the paper. `past_cutoff` keys on
-    the ELECTION year (who won is only knowable after the November vote), so a
-    chronologically consistent model should be correct only for elections at/before its
-    cutoff. History is clamped to the priors that exist — with only the six paper-tested
-    presidents, the earliest targets get fewer than three priors (the paper's full list
-    carries older presidents so every target has three).
+    Reads exactly two tokens by greedy decoding, as in the paper. Returns a list of
+    dicts; `past_cutoff` flags rows the model should NOT get right if it is
+    chronologically consistent.
     """
     results = []
     for i in range(0, len(PRESIDENTS)):
-        history = PRESIDENTS[max(0, i - 3) : i]          # up to 3 priors; clamp, never negative-wrap
-        election_year, target_name = PRESIDENTS[i]
-        completion = generate(model, device, president_prompt(history, election_year),
+        history = PRESIDENTS[i - 3 : i]
+        target_year, target_name = PRESIDENTS[i]
+        completion = generate(model, device, president_prompt(history, target_year),
                               max_new_tokens=2, top_k=1, return_completion=True).strip()
         results.append({
-            "election_year": election_year,
-            "took_office_year": election_year + 1,
+            "target_year": target_year,
             "target": target_name,
             "prediction": completion,
             "correct": target_name.split()[0] in completion,
-            "past_cutoff": election_year > cutoff_year,
+            "past_cutoff": target_year > cutoff_year,
         })
     return results
 
@@ -171,14 +163,27 @@ def alpaca_outputs(repo, instructions, generator, backend="chrono", max_new_toke
     return outs
 
 
-def alpaca_winrate(model_outputs_json, reference_outputs_json):
+# AlpacaEval's default annotator (`weighted_alpaca_eval_gpt4_turbo`) judges with
+# gpt-4-1106-preview, which OpenAI has retired — it now 404s ("model_not_found").
+# Default instead to a shipped annotator config backed by a currently-available
+# model; override via the ALPACA_ANNOTATOR env var (any evaluators_config name in
+# the installed alpaca_eval, e.g. a gpt-4-turbo-family config for higher human
+# agreement at higher cost).
+DEFAULT_ALPACA_ANNOTATOR = "weighted_alpaca_eval_gpt-4o-mini-2024-07-18"
+
+
+def alpaca_winrate(model_outputs_json, reference_outputs_json, annotators_config=None):
     """Length-controlled win-rate (%) of model vs reference, via the alpaca_eval package.
 
     Delegates judging + the length-controlled regression to the canonical tool so
     we don't re-implement (and mis-implement) it. The exact return column may vary
     by alpaca_eval version; the saved output JSONs are the stable artifacts.
+    `annotators_config` selects the judge; defaults to ALPACA_ANNOTATOR or
+    DEFAULT_ALPACA_ANNOTATOR (avoiding the retired gpt-4-1106-preview default).
     """
+    import os
     from alpaca_eval import evaluate as alpaca_evaluate
+    annotator = annotators_config or os.environ.get("ALPACA_ANNOTATOR", DEFAULT_ALPACA_ANNOTATOR)
     with open(model_outputs_json) as f:
         model_outputs = json.load(f)
     with open(reference_outputs_json) as f:
@@ -186,6 +191,7 @@ def alpaca_winrate(model_outputs_json, reference_outputs_json):
     leaderboard, _ = alpaca_evaluate(
         model_outputs=model_outputs,
         reference_outputs=reference_outputs,
+        annotators_config=annotator,
         is_return_instead_of_print=True,
     )
     row = leaderboard.iloc[0]
