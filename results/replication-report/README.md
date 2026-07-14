@@ -192,81 +192,77 @@ correctness would be look-ahead *leakage* — the failure mode the whole constru
 exists to prevent. So the number to watch is the **post-cutoff-correct** column: it
 should be **0** for every vintage.
 
-**Legend** (cell = the model's greedy completion for that year, scored):
-`✓` correct, pre-cutoff (in-knowledge hit) · `✗` wrong, pre-cutoff (capability miss,
-benign) · `∅` wrong, post-cutoff (**blind — the no-look-ahead guarantee working**) ·
-`⚠` correct, post-cutoff (**leakage**). A clean run is `✓`/`✗` on/below the diagonal
-and `∅` above it, with **no `⚠` anywhere.**
+Tables follow the paper's Table 2 / Table 3 layout: each **cell is the model's greedy
+completion** for that year's blank; rows are our six vintages; the last two columns
+are pre- and post-cutoff accuracy; the final row aggregates over all six. Cell styling
+mirrors the paper's blue/gray coding: **bold** = correct (paper's blue); _italic_ =
+post-cutoff prompt beyond the vintage's knowledge cutoff (paper's gray shading — the
+model *should* be blind here, so an italic that is **not** bold is the desired
+outcome); a **_bold-italic_** cell would be post-cutoff *leakage* (**none occur**).
 
 ### Table 2 — U.S. president prediction
 
-Prompt: the chronologically-ordered prior presidents, then "Took office in {year}:
-President ___". Columns are the target's inauguration year.
+Prompt (paper's template): the three prior presidents in order, then
+"Took office in {year}: President ___". Columns are the target's inauguration year;
+`past_cutoff` keys on that inauguration year (year > τ) — see the note below on how
+this differs from the paper at the boundary.
 
-| Vintage τ | 1993 Clinton | 2001 Bush | 2009 Obama | 2017 Trump | 2021 Biden | 2025 Trump |
-|---:|:--:|:--:|:--:|:--:|:--:|:--:|
-| **1999** | ✗ | ∅ | ∅ | ∅ | ∅ | ∅ |
-| **2005** | ✗ | ✓ | ∅ | ∅ | ∅ | ∅ |
-| **2010** | ✗ | ✓ | ✗ | ∅ | ∅ | ∅ |
-| **2015** | ✓ | ✓ | ✓ | ∅ | ∅ | ∅ |
-| **2020** | ✓ | ✓ | ✓ | ✓ | ∅ | ∅ |
-| **2024**† | ✗ | ✓ | ✗ | ✓ | ✓ | ∅ |
-
-| Vintage τ | Pre-cutoff correct | Post-cutoff correct (want 0) | Consistent |
-|---:|:--:|:--:|:--:|
-| 1999 | 0/1 | **0/5** | 5/6 |
-| 2005 | 1/2 | **0/4** | 5/6 |
-| 2010 | 1/3 | **0/3** | 4/6 |
-| 2015 | 3/3 | **0/3** | 6/6 |
-| 2020 | 4/4 | **0/2** | 6/6 |
-| 2024†| 3/5 | **0/1** | 4/6 |
+| Vintage | 1993<br>Clinton | 2001<br>Bush | 2009<br>Obama | 2017<br>Trump | 2021<br>Biden | 2025<br>Trump | Pre | Post |
+|:--|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| **1999** | Ronald Reagan | _John F_ | _Ronald Reagan_ | _Bill Clinton_ | _Obama_ | _John F_ | 0/1 | **0/5** |
+| **2005** | George H | **George W** | _George W_ | _George W_ | _George W_ | _George W_ | 1/2 | **0/4** |
+| **2010** | George H | **George W** | George W | _John H_ | _Bill Clinton_ | _George W_ | 1/3 | **0/3** |
+| **2015** | **Bill Clinton** | **George W** | **Barack H** | _elect John_ | _John Paul_ | _George W_ | 3/3 | **0/3** |
+| **2020** | **Bill Clinton** | **George W** | **Barack Obama** | **Donald Trump** | _Franklin D_ | _George W_ | 4/4 | **0/2** |
+| **2024**† | George H | **George W** | Donald J | **Donald J** | **Joe Biden** | _Kamala_ | 3/5 | **0/1** |
+| **1999–2024 (all 6)** |  |  |  |  |  |  | **12/18** | **0/18** |
 
 ### Table 3 — major world events
 
 Prompt: a dated sentence with the key term blanked (Enron 2001, SARS 2003, GFC 2008,
-Brexit 2016, COVID 2020, ChatGPT 2022); the model completes the term.
+Brexit 2016, COVID 2020, ChatGPT 2022); the model completes the term (3 greedy tokens).
 
-| Vintage τ | 2001 Enron | 2003 SARS | 2008 GFC | 2016 Brexit | 2020 COVID | 2022 ChatGPT |
-|---:|:--:|:--:|:--:|:--:|:--:|:--:|
-| **1999** | ∅ | ∅ | ∅ | ∅ | ∅ | ∅ |
-| **2005** | ✓ | ✓ | ∅ | ∅ | ∅ | ∅ |
-| **2010** | ✓ | ✗ | ✓ | ∅ | ∅ | ∅ |
-| **2015** | ✓ | ✓ | ✓ | ∅ | ∅ | ∅ |
-| **2020** | ✓ | ✓ | ✓ | ✓ | ✓ | ∅ |
-| **2024** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Vintage | 2001<br>Enron | 2003<br>SARS | 2008<br>GFC | 2016<br>Brexit | 2020<br>COVID | 2022<br>ChatGPT | Pre | Post |
+|:--|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| **1999** | _ado de la_ | _the "C_ | _market, which_ | _._ | _Great Depress_ | _the "Ch_ | 0/0 | **0/6** |
+| **2005** | **scandal, whic** | **SARS,** | _market, which_ | _._ | _"Asian flu_ | _"Chatbot_ | 2/2 | **0/4** |
+| **2010** | **scandal, whic** | the H1 | **crisis, which** | _._ | _Black Death._ | _"The Turing_ | 2/3 | **0/3** |
+| **2015** | **scandal, whic** | **SARS,** | **crisis, which** | _vote. This_ | _"Asian flu_ | _"The Talking_ | 3/3 | **0/3** |
+| **2020** | **scandal, whic** | **SARS-** | **crisis, which** | **referendum. T** | **COVID-** | _"Q&_ | 5/5 | **0/1** |
+| **2024** | **scandal, whic** | **SARS-** | **crisis, which** | **referendum. T** | **COVID-** | **"GPT** | 6/6 | **0/0** |
+| **1999–2024 (all 6)** |  |  |  |  |  |  | **18/19** | **0/17** |
 
-| Vintage τ | Pre-cutoff correct | Post-cutoff correct (want 0) | Consistent |
-|---:|:--:|:--:|:--:|
-| 1999 | 0/0 | **0/6** | 6/6 |
-| 2005 | 2/2 | **0/4** | 6/6 |
-| 2010 | 2/3 | **0/3** | 5/6 |
-| 2015 | 3/3 | **0/3** | 6/6 |
-| 2020 | 5/5 | **0/1** | 6/6 |
-| 2024 | 6/6 | **0/0** | 6/6 |
-
-**What the two tables show.**
-- **Zero look-ahead leakage.** The post-cutoff-correct column is **0/N for all twelve
-  rows** — no vintage ever names a president or event dated after its cutoff. The
-  entire upper-right triangle is `∅`: the models are correctly *blind* to the future.
-  This is the paper's core chronological-consistency claim, reproduced.
+**What the two tables show** (compare the paper's 67/83 pre & 0/73 post for presidents,
+76/80 & 0/76 for events — same shape, at our six-vintage scale):
+- **Zero look-ahead leakage.** The **Post** column is **0/N for every vintage in both
+  tables** (aggregate 0/18 and 0/17) — no vintage ever names a president or event dated
+  after its cutoff. Every _italic_ cell is non-bold: the models are correctly *blind*
+  to the future. This is the paper's core chronological-consistency claim, reproduced.
 - **Pre-cutoff accuracy rises monotonically with τ.** As the knowledge window widens,
-  the lower-left triangle fills in — president recall goes 0/1 → 1/2 → 1/3 → 3/3 →
+  the bold cells fill in left-to-right — president recall goes 0/1 → 1/2 → 1/3 → 3/3 →
   4/4 (1999 → 2020); events go 0/0 → 2/2 → 2/3 → 3/3 → 5/5 → 6/6. Later vintages know
   more *of their own past*, exactly as expected.
-- **`✗` cells are capability misses, not leakage.** Early vintages (and the
-  earliest-president slots, which get the least prior context) sometimes name the
-  *wrong* pre-cutoff figure — e.g. 1999 answers "Ronald Reagan" for 1993. These count
-  against strict row-consistency but are benign for the no-look-ahead guarantee, which
-  is governed solely by the post-cutoff column. The signal that matters — zero
-  post-cutoff hits — is clean everywhere.
+- **Plain (non-bold, non-italic) cells are capability misses, not leakage.** Early
+  vintages — and the earliest-president slots, which under our six-name list get **no**
+  prior context (the paper's fuller list always supplies three priors) — sometimes name
+  the *wrong* pre-cutoff figure, e.g. 1999 → "Ronald Reagan" for 1993. These lower the
+  Pre score but are irrelevant to the no-look-ahead guarantee, which is governed solely
+  by the Post column. The signal that matters is clean everywhere.
 
 †**2024 caveat.** The 2024 `eval.json` was produced by an interim variant of the
-president harness (election-year keying + 3-prior context for the earliest slots),
-since reverted to the inauguration-year form the other five vintages use. Post-cutoff
-labels above are recomputed uniformly (year > τ), so its leakage conclusion (0/1)
-stands; its two `✗` early-slot cells should be re-confirmed by re-running
+president harness (election-year keying + different early-slot context), since reverted
+to the inauguration-year form the other five vintages use. Its cells above are
+re-mapped to inauguration years and its Post label recomputed uniformly (year > τ), so
+the leakage conclusion (0/1) stands; its pre-cutoff cells should be re-confirmed by
 `python scripts/run_eval.py --vintage 2024` under the current harness. Table 3 is
 harness-independent and needs no re-run.
+
+**Boundary note (vs the paper).** The paper's Table 2 keys `past_cutoff` on the
+**election** year (e.g. Biden's 2020 election is *pre*-cutoff for the τ=2020 model,
+since the Nov-2020 result was knowable by Dec 31 2020). We key on the **inauguration**
+year, so Biden is *post*-cutoff for τ=2020 here. This shifts at most one boundary cell
+per vintage and never creates leakage (the Post column is still 0/N); it is a
+deliberate simplification, not a fidelity claim.
 
 **Reproduce** (defaults to the HF-published models; writes `eval.json` per vintage and
 aggregates into this folder's `eval_results.json` / `eval_summary.md`):
