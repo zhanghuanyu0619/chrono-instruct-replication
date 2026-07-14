@@ -33,8 +33,19 @@ chrono alpaca --backend hf --repo Qwen/Qwen1.5-1.8B-Chat --name qwen --out out/q
 ```bash
 chrono winrate --model out/chrono-2020.json --reference out/qwen.json
 ```
-Both models decode greedily so the win-rate reflects model quality, not decoding
-strategy. Prints `LC win rate: <pct>%`.
+Both models decode **greedily** (matching the authors' released
+`ChronoGPT_instruct.py`: temperature 0, argmax), so the win-rate reflects model
+quality, not decoding strategy. Prints `LC win rate: <pct>%`.
+
+> **Judge model.** AlpacaEval's default annotator calls OpenAI's **retired**
+> `gpt-4-1106-preview` (now 404s). `eval.py` defaults instead to a live annotator
+> (`weighted_alpaca_eval_gpt-4o-mini-2024-07-18`); override with
+> `--annotator <cfg>` or `ALPACA_ANNOTATOR=<cfg>` (e.g.
+> `weighted_alpaca_eval_gpt4_turbo_new` for the closest match to the paper's
+> gpt-4-turbo-family judge, at higher cost). Expect win rates around the paper's
+> Figure 3 range (**12.6–16.8%**), not higher — Qwen saw ~31× more pretraining data.
+> To re-score *already-generated* outputs without any GPU work, use
+> `scripts/score_alpaca.py`.
 
 ## Plot Figure 3
 
