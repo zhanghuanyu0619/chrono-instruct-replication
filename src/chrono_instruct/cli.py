@@ -119,7 +119,12 @@ def main(argv=None):
 
     elif args.cmd == "alpaca":
         import json
+        import os
         from .eval import alpaca_instructions, alpaca_outputs
+        # Create the output dir FIRST — otherwise a missing dir would only surface on the
+        # final write, after the (expensive, ~20 min) generation has already run.
+        if os.path.dirname(args.out):
+            os.makedirs(os.path.dirname(args.out), exist_ok=True)
         outs = alpaca_outputs(args.repo, alpaca_instructions(args.n), args.name, backend=args.backend)
         with open(args.out, "w") as f:
             json.dump(outs, f, indent=2)
