@@ -176,12 +176,13 @@ report — see `results/replication-report/README.md` in the repository:
 - **SFT loss curves (Figures 1–2).** ✅ Reproduced. Stage-3 validation cross-entropy
   falls monotonically as the cutoff advances (0.8691 at 1999 → 0.7855 at 2024),
   the paper's "later vintage = better language model, not leakage" structure.
-- **Chronological-consistency tests (Tables 2–3).** U.S. president prediction and
-  major-world-events tests: correct on pre-cutoff items, blind (0/N) on post-cutoff
-  items. Coded and staged; run per vintage with
-  `chrono eval --repo HZ0619/chrono-instruct-v1-{{VINTAGE}}1231 --cutoff {{VINTAGE}}`.
-- **AlpacaEval LC win-rate (Figure 3)** vs Qwen-1.5-1.8B-Chat (paper reports
-  ~54–62%). Coded; needs a judge API key.
+- **Chronological-consistency tests (Tables 2–3).** ✅ Reproduced. U.S. president
+  prediction and major-world-events tests: correct on pre-cutoff items, blind (0/N)
+  on post-cutoff items — zero look-ahead leakage across all vintages. Run per vintage
+  with `chrono eval --repo HZ0619/chrono-instruct-v1-{{VINTAGE}}1231 --cutoff {{VINTAGE}}`.
+- **AlpacaEval LC win-rate (Figure 3)** vs Qwen-1.5-1.8B-Chat: the paper reports a
+  modest **12.59–16.79%** (Qwen saw ~31× more pretraining data). Generated; needs a
+  judge API key to score.
 
 ## Limitations & bias
 

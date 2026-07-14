@@ -14,8 +14,9 @@ so `eval_all_vintages.sh` collects every vintage without manual copying.
 
 Punchline each exhibit should show (paper): a chronologically consistent model is
 CORRECT on items before its cutoff and BLIND (wrong) on items after it — that is
-the no-look-ahead guarantee (Tables 2-3); and despite that constraint it still
-follows instructions competitively (~54-62% LC win-rate vs Qwen — Figure 3).
+the no-look-ahead guarantee (Tables 2-3); and it follows instructions at a modest
+but nonzero level given its 31x smaller pretraining budget (Figure 3 LC win-rate vs
+Qwen rises 12.59% -> 16.79% across the 1999 -> 2024 vintages in the paper).
 
 Usage:
   python scripts/run_eval.py --vintage 2024

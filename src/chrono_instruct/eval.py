@@ -126,23 +126,20 @@ def alpaca_instructions(n=None):
     return items[:n] if n else items
 
 
-def alpaca_outputs(repo, instructions, generator, backend="chrono", max_new_tokens=256,
-                   no_repeat_ngram_size=3, repetition_penalty=1.3):
+def alpaca_outputs(repo, instructions, generator, backend="chrono", max_new_tokens=256):
     """Generate AlpacaEval-format outputs ({instruction, output, generator}).
 
     backend="chrono": our ChronoGPT, prompted with the same Alpaca template used
     in training. backend="hf": any HF chat model (e.g. the Qwen reference), via
     its chat template.
 
-    Decoding stays deterministic (greedy) but with loop-suppression ON by default:
-    a 1.55B SFT model under pure greedy degenerates into verbatim repetition loops
-    ("Use a sturdy, sturdy-looking gift bag" x5), which an AlpacaEval judge rightly
-    rates far below a robust reference — collapsing the win-rate for a *decoding*
-    reason, not a model-quality one. `no_repeat_ngram_size=3` forbids repeating any
-    3-gram and `repetition_penalty` discourages token re-use; both are applied
-    SYMMETRICALLY to the chrono and HF paths so the comparison is like-for-like
-    (near-no-ops for a reference that doesn't loop). Set both to 0 / 1.0 for the
-    old pure-greedy behavior.
+    Decoding is pure GREEDY (top_k=1 / do_sample=False), matching the authors'
+    released `ChronoGPT_instruct.py generate()` (temperature=0.0, argmax, no
+    repetition penalty). A 1.55B model under greedy does degenerate into repetition
+    loops on some prompts — but that is exactly what the authors' own model does, so
+    the paper's low AlpacaEval win rates (Fig 3: 12.6-16.8% vs Qwen) already reflect
+    it. Adding anti-repetition here would make our model look *better* than the paper's
+    actual generation, i.e. an unfaithful replication; we deliberately don't.
     """
     if backend == "chrono":
         from .infer import load
@@ -151,12 +148,10 @@ def alpaca_outputs(repo, instructions, generator, backend="chrono", max_new_toke
         outs = []
         for item in instructions:
             prompt = PROMPT_NO_INPUT.format(instruction=item["instruction"])
-            # Greedy (top_k=1), matching the HF reference's do_sample=False below, but
-            # with loop-suppression so the win-rate reflects quality, not degeneracy.
+            # Greedy (top_k=1) to match the HF reference's do_sample=False below: the
+            # win-rate must not confound decoding strategy with model quality.
             completion = generate(model, device, prompt, max_new_tokens=max_new_tokens,
-                                  top_k=1, return_completion=True,
-                                  no_repeat_ngram_size=no_repeat_ngram_size,
-                                  repetition_penalty=repetition_penalty)
+                                  top_k=1, return_completion=True)
             outs.append({"instruction": item["instruction"],
                          "output": completion.strip(), "generator": generator})
         return outs
@@ -169,9 +164,7 @@ def alpaca_outputs(repo, instructions, generator, backend="chrono", max_new_toke
         chat = tok.apply_chat_template([{"role": "user", "content": item["instruction"]}],
                                        tokenize=False, add_generation_prompt=True)
         enc = tok(chat, return_tensors="pt").to(model.device)
-        gen = model.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False,
-                             no_repeat_ngram_size=no_repeat_ngram_size,
-                             repetition_penalty=repetition_penalty)
+        gen = model.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False)
         completion = tok.decode(gen[0, enc["input_ids"].shape[1]:], skip_special_tokens=True)
         outs.append({"instruction": item["instruction"],
                      "output": completion.strip(), "generator": generator})

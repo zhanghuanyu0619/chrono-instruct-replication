@@ -43,7 +43,7 @@ judge step is a one-command re-run, §7).
 | — | Six trained vintages pushed to HF | Reusable, leakage-free instruct models | ✅ done |
 | Table 2 | U.S. president consistency test | Correct pre-cutoff, blind post-cutoff | ✅ done (§6) |
 | Table 3 | Major-world-events test | Same chronological-consistency pattern | ✅ done (§6) |
-| Figure 3 | AlpacaEval LC win-rate vs Qwen-1.5-1.8B-Chat | Instruction-following quality (~54–62% in paper) | ⏳ generated, judging pending |
+| Figure 3 | AlpacaEval LC win-rate vs Qwen-1.5-1.8B-Chat | Instruction-following quality (12.59–16.79% in paper) | ⏳ generated, judging pending |
 | — | Uncapped full-validation re-scoring | Tightens the noisy Stage-1 training-time numbers | ⏳ coded, not yet run |
 
 Not in scope (by design): any downstream return-prediction / trading application
@@ -295,10 +295,15 @@ chrono alpaca --backend hf --repo Qwen/Qwen1.5-1.8B-Chat --name qwen --out out/q
 python scripts/score_alpaca.py --model results/chrono-instruct-2020/alpaca_2020.json
 ```
 
-`score_alpaca.py` writes the win-rate back into each vintage's `eval.json`. The paper
-reports a **~54–62%** length-controlled win-rate; a cheaper judge (gpt-4o-mini) may
-shift the absolute level, so the closest comparison uses a gpt-4-turbo-family
-annotator (§8).
+`score_alpaca.py` writes the win-rate back into each vintage's `eval.json`. The paper's
+**Figure 3** reports LC win rates of **12.59% → 16.79%** (1999 → 2024) — deliberately
+low, because Qwen-1.5-1.8B-Chat saw ~31× more pretraining tokens; the point is that a
+leakage-free model is still competitive, not that it wins. (Do not confuse this with
+the "54–62%" figure in the paper — that is the **trading Sharpe-ratio** result of
+Table 4, a different exhibit we do not reproduce here.) Decoding is **greedy**, matching
+the authors' released `ChronoGPT_instruct.py` (temperature 0, argmax, no repetition
+penalty); the reference judge (gpt-4o-mini) is cheaper than the paper's, so a
+gpt-4-turbo-family annotator gives the closest absolute comparison (§8).
 
 **Uncapped full-validation re-scoring** (`scripts/full_eval.py`). Training-time
 validation caps the held-out set at `val_max_blocks: 500`, which made Stage-1's
@@ -362,6 +367,9 @@ especially the masked-loss reading (§2) and the packing/split handling (§4).*
 - **AlpacaEval judge choice affects the absolute win-rate.** The default was switched
   off OpenAI's retired `gpt-4-1106-preview`; the current cheap default (gpt-4o-mini)
   trades some human agreement for cost, so re-judging with a gpt-4-turbo-family
-  annotator gives the closest comparison to the paper's ~54–62% (§6b).
+  annotator gives the closest comparison to the paper's Figure 3 (12.59–16.79%, §6b).
+  A first greedy run scored 2015 at LC 9.94% (vs the paper's 16.36% for that vintage) —
+  same order of magnitude; the gap is plausibly judge-model and model-capability
+  differences, not a pipeline bug.
 - **Packing splits ~5.1% of Tulu examples** at block boundaries; no response tokens
   are lost, but such examples are never seen whole in one forward (§5).
