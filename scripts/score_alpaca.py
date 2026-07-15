@@ -68,6 +68,7 @@ def main():
         reference_outputs=reference_outputs,
         annotators_config=annotator,
         is_return_instead_of_print=True,
+        output_path=None,   # don't spawn stray results/chrono-<τ>/ annotation dumps
     )
     row = leaderboard.iloc[0]
     lc = row.get("length_controlled_winrate")

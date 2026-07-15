@@ -111,6 +111,9 @@
     "n": 805,
     "annotator": "weighted_alpaca_eval_gpt4_turbo_new",
     "lc_winrate": 8.39,
-    "winrate": 6.12
+    "winrate": 6.12,
+    "lc_standard_error": 0.0933,
+    "standard_error": 0.7572,
+    "n_total": 805
   }
 }

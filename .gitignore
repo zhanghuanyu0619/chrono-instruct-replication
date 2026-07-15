@@ -29,3 +29,6 @@ docs/env-setup.md
 
 # Personal code walkthrough — kept locally, not synced to GitHub
 docs/walkthrough/
+
+# alpaca_eval per-prompt annotation dumps (large; the win-rate is already in eval.json)
+results/**/annotations.json

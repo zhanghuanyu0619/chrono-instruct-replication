@@ -188,6 +188,12 @@ def alpaca_winrate(model_outputs_json, reference_outputs_json, annotators_config
     by alpaca_eval version; the saved output JSONs are the stable artifacts.
     `annotators_config` selects the judge; defaults to ALPACA_ANNOTATOR or
     DEFAULT_ALPACA_ANNOTATOR (avoiding the retired gpt-4-1106-preview default).
+
+    `output_path=None` disables alpaca_eval's own file dump: by default it saves the
+    per-prompt annotations + a leaderboard to `results/{generator}/{annotator}/`
+    (relative to cwd), which spawned stray `results/chrono-<τ>/` dirs (~3 MB each of
+    annotations) parallel to our `results/chrono-instruct-<τ>/`. We already write the
+    win-rate into each vintage's eval.json, so the dump is pure clutter — off by default.
     """
     import os
     from alpaca_eval import evaluate as alpaca_evaluate
@@ -201,6 +207,7 @@ def alpaca_winrate(model_outputs_json, reference_outputs_json, annotators_config
         reference_outputs=reference_outputs,
         annotators_config=annotator,
         is_return_instead_of_print=True,
+        output_path=None,
     )
     row = leaderboard.iloc[0]
     return float(row.get("length_controlled_winrate", row.get("win_rate")))
