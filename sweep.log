@@ -1,0 +1,1106 @@
+==================  chrono-instruct-1999  (base manelalab/chrono-gpt-v1-19991231)  ==================
+wrote configs/_vintage_1999.yaml  (model_repo=manelalab/chrono-gpt-v1-19991231, output_dir=/home/ubuntu/persist/runs/chrono-instruct-1999, repo_id=HZ0619/chrono-instruct-v1-19991231)
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/ubuntu/.netrc.
+wandb: Currently logged in as: zhanghuanyu0619 to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.28.0
+wandb: Run data is saved locally in /lambda/nfs/Manela/chrono-instruct-replication/wandb/run-20260706_103224-dmrtm3vd
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run chrono-instruct-1999-20260706-103223
+wandb: ⭐️ View project at https://wandb.ai/zhanghuanyu0619/chrono-instruct
+wandb: 🚀 View run at https://wandb.ai/zhanghuanyu0619/chrono-instruct/runs/dmrtm3vd
+[data] loading cached packed blocks: cache/packed-7ad00a00d364bb4f.pt
+=== stage1_scratch: 34 train blocks, 1 val blocks ===
+[stage1_scratch] step 0/3 train 2.6153 val 2.7628 lr 3.00e-04 |g| 0.00 0 tok/s 17.9GB
+[stage1_scratch] step 1/3 train 2.8124
+[stage1_scratch] step 1/3 train 2.8124 val 1.6273 lr 2.32e-04 |g| 5.65 9,115 tok/s 44.8GB
+[stage1_scratch] step 2/3 train 1.7676
+[stage1_scratch] step 2/3 train 1.7676 val 1.4749 lr 9.75e-05 |g| 1.18 4,905 tok/s 50.4GB
+[stage1_scratch] step 3/3 train 1.8291
+[stage1_scratch] step 3/3 train 1.8291 val 1.4492 lr 3.00e-05 |g| 0.61 6,427 tok/s 50.4GB
+[stage1_scratch] step 3/3 train nan val 1.4492 lr 3.00e-05 |g| 0.61 18,530 tok/s 50.4GB
+[stage1_scratch] restored best-val weights: val 1.4492 @ step 3
+=== stage2_self_instruct: 3376 train blocks, 176 val blocks ===
+[stage2_self_instruct] step 0/210 train 2.5847 val 2.5558 lr 5.00e-05 |g| 0.00 0 tok/s 50.4GB
+[stage2_self_instruct] step 20/210 train 1.5537
+[stage2_self_instruct] step 20/210 train 1.9851 val 1.6868 lr 2.97e-04 |g| 0.24 7,528 tok/s 50.4GB
+[stage2_self_instruct] step 40/210 train 1.5574
+[stage2_self_instruct] step 40/210 train 1.5938 val 1.5234 lr 2.82e-04 |g| 0.18 6,682 tok/s 50.4GB
+[stage2_self_instruct] step 60/210 train 1.4538
+[stage2_self_instruct] step 60/210 train 1.5102 val 1.4487 lr 2.56e-04 |g| 0.16 6,723 tok/s 50.4GB
+[stage2_self_instruct] step 80/210 train 1.5943
+[stage2_self_instruct] step 80/210 train 1.4699 val 1.4026 lr 2.21e-04 |g| 0.18 6,834 tok/s 50.4GB
+[stage2_self_instruct] step 100/210 train 1.4351
+[stage2_self_instruct] step 100/210 train 1.4405 val 1.3707 lr 1.82e-04 |g| 0.17 6,702 tok/s 50.4GB
+[stage2_self_instruct] step 120/210 train 1.1663
+[stage2_self_instruct] step 120/210 train 1.3182 val 1.3488 lr 1.40e-04 |g| 0.20 6,548 tok/s 50.4GB
+[stage2_self_instruct] step 140/210 train 1.2024
+[stage2_self_instruct] step 140/210 train 1.2592 val 1.3355 lr 1.01e-04 |g| 0.15 6,694 tok/s 50.4GB
+[stage2_self_instruct] step 160/210 train 1.2682
+[stage2_self_instruct] step 160/210 train 1.2245 val 1.3234 lr 6.81e-05 |g| 0.16 6,851 tok/s 50.4GB
+[stage2_self_instruct] step 180/210 train 1.2057
+[stage2_self_instruct] step 180/210 train 1.2180 val 1.3157 lr 4.42e-05 |g| 0.14 6,703 tok/s 50.4GB
+[stage2_self_instruct] step 200/210 train 1.3571
+[stage2_self_instruct] step 200/210 train 1.2711 val 1.3093 lr 3.16e-05 |g| 0.14 6,703 tok/s 50.4GB
+[stage2_self_instruct] step 210/210 train 1.2589 val 1.3080 lr 3.00e-05 |g| 0.13 6,155 tok/s 50.4GB
+[stage2_self_instruct] restored best-val weights: val 1.3080 @ step 210
+=== stage3_tulu: 134885 train blocks, 500 val blocks ===
+[stage3_tulu] step 0/8430 train 2.2936 val 2.3910 lr 1.19e-06 |g| 0.00 0 tok/s 50.4GB
+[stage3_tulu] step 100/8430 train 1.8152
+[stage3_tulu] step 200/8430 train 1.4387
+[stage3_tulu] step 200/8430 train 1.5799 val 1.3002 lr 2.39e-04 |g| 0.17 7,269 tok/s 50.4GB
+[stage3_tulu] step 300/8430 train 1.2132
+[stage3_tulu] step 400/8430 train 1.2910
+[stage3_tulu] step 400/8430 train 1.2460 val 1.1829 lr 3.00e-04 |g| 0.13 7,091 tok/s 50.4GB
+[stage3_tulu] step 500/8430 train 1.2221
+[stage3_tulu] step 600/8430 train 1.1198
+[stage3_tulu] step 600/8430 train 1.1828 val 1.1430 lr 2.99e-04 |g| 0.14 7,087 tok/s 50.4GB
+[stage3_tulu] step 700/8430 train 1.0495
+[stage3_tulu] step 800/8430 train 0.9752
+[stage3_tulu] step 800/8430 train 1.1288 val 1.0922 lr 2.97e-04 |g| 0.09 7,154 tok/s 50.4GB
+[stage3_tulu] step 900/8430 train 0.9398
+[stage3_tulu] step 1000/8430 train 0.9097
+[stage3_tulu] step 1000/8430 train 1.0855 val 1.0662 lr 2.94e-04 |g| 0.10 7,153 tok/s 50.4GB
+[stage3_tulu] step 1100/8430 train 1.2002
+[stage3_tulu] step 1200/8430 train 0.9129
+[stage3_tulu] step 1200/8430 train 1.0602 val 1.0471 lr 2.91e-04 |g| 0.09 7,122 tok/s 50.4GB
+[stage3_tulu] step 1300/8430 train 1.2608
+[stage3_tulu] step 1400/8430 train 0.9527
+[stage3_tulu] step 1400/8430 train 1.0563 val 1.0281 lr 2.87e-04 |g| 0.09 7,153 tok/s 50.4GB
+[stage3_tulu] step 1500/8430 train 0.9385
+[stage3_tulu] step 1600/8430 train 1.0045
+[stage3_tulu] step 1600/8430 train 1.0250 val 1.0130 lr 2.82e-04 |g| 0.09 7,122 tok/s 50.4GB
+[stage3_tulu] step 1700/8430 train 1.1024
+[stage3_tulu] step 1800/8430 train 0.7808
+[stage3_tulu] step 1800/8430 train 1.0067 val 1.0006 lr 2.77e-04 |g| 0.09 7,145 tok/s 50.4GB
+[stage3_tulu] step 1900/8430 train 0.9277
+[stage3_tulu] step 2000/8430 train 1.1724
+[stage3_tulu] step 2000/8430 train 0.9855 val 0.9876 lr 2.71e-04 |g| 0.08 7,155 tok/s 50.4GB
+[stage3_tulu] step 2100/8430 train 0.9581
+[stage3_tulu] step 2200/8430 train 0.9520
+[stage3_tulu] step 2200/8430 train 1.0038 val 0.9766 lr 2.64e-04 |g| 0.10 7,119 tok/s 50.4GB
+[stage3_tulu] step 2300/8430 train 0.8958
+[stage3_tulu] step 2400/8430 train 0.7633
+[stage3_tulu] step 2400/8430 train 0.9697 val 0.9671 lr 2.57e-04 |g| 0.11 7,125 tok/s 50.4GB
+[stage3_tulu] step 2500/8430 train 1.2132
+[stage3_tulu] step 2600/8430 train 0.8037
+[stage3_tulu] step 2600/8430 train 0.9553 val 0.9581 lr 2.49e-04 |g| 0.08 7,132 tok/s 50.4GB
+[stage3_tulu] step 2700/8430 train 1.0076
+[stage3_tulu] step 2800/8430 train 0.8999
+[stage3_tulu] step 2800/8430 train 0.9617 val 0.9510 lr 2.40e-04 |g| 0.08 7,148 tok/s 50.4GB
+[stage3_tulu] step 2900/8430 train 0.7283
+[stage3_tulu] step 3000/8430 train 0.9108
+[stage3_tulu] step 3000/8430 train 0.9396 val 0.9440 lr 2.32e-04 |g| 0.09 7,143 tok/s 50.4GB
+[stage3_tulu] step 3100/8430 train 1.3733
+[stage3_tulu] step 3200/8430 train 0.9050
+[stage3_tulu] step 3200/8430 train 0.9825 val 0.9378 lr 2.22e-04 |g| 0.07 7,118 tok/s 50.4GB
+[stage3_tulu] step 3300/8430 train 0.9520
+[stage3_tulu] step 3400/8430 train 0.8925
+[stage3_tulu] step 3400/8430 train 0.9424 val 0.9305 lr 2.13e-04 |g| 0.08 7,163 tok/s 50.4GB
+[stage3_tulu] step 3500/8430 train 0.9414
+[stage3_tulu] step 3600/8430 train 0.9496
+[stage3_tulu] step 3600/8430 train 0.9273 val 0.9248 lr 2.03e-04 |g| 0.07 7,121 tok/s 50.4GB
+[stage3_tulu] step 3700/8430 train 0.7027
+[stage3_tulu] step 3800/8430 train 0.7791
+[stage3_tulu] step 3800/8430 train 0.9436 val 0.9198 lr 1.93e-04 |g| 0.09 7,151 tok/s 50.4GB
+[stage3_tulu] step 3900/8430 train 0.7378
+[stage3_tulu] step 4000/8430 train 0.8666
+[stage3_tulu] step 4000/8430 train 0.9099 val 0.9164 lr 1.83e-04 |g| 0.08 7,162 tok/s 50.4GB
+[stage3_tulu] step 4100/8430 train 1.0859
+[stage3_tulu] step 4200/8430 train 0.6874
+[stage3_tulu] step 4200/8430 train 0.9371 val 0.9107 lr 1.72e-04 |g| 0.07 7,124 tok/s 50.4GB
+[stage3_tulu] step 4300/8430 train 0.6469
+[stage3_tulu] step 4400/8430 train 1.0249
+[stage3_tulu] step 4400/8430 train 0.8961 val 0.9069 lr 1.62e-04 |g| 0.09 7,166 tok/s 50.4GB
+[stage3_tulu] step 4500/8430 train 0.7459
+[stage3_tulu] step 4600/8430 train 0.7450
+[stage3_tulu] step 4600/8430 train 0.8696 val 0.9028 lr 1.52e-04 |g| 0.08 7,122 tok/s 50.4GB
+[stage3_tulu] step 4700/8430 train 0.6556
+[stage3_tulu] step 4800/8430 train 0.7417
+[stage3_tulu] step 4800/8430 train 0.8928 val 0.8996 lr 1.41e-04 |g| 0.07 7,161 tok/s 50.4GB
+[stage3_tulu] step 4900/8430 train 0.8754
+[stage3_tulu] step 5000/8430 train 0.8386
+[stage3_tulu] step 5000/8430 train 0.8702 val 0.8964 lr 1.31e-04 |g| 0.08 7,156 tok/s 50.4GB
+[stage3_tulu] step 5100/8430 train 0.9606
+[stage3_tulu] step 5200/8430 train 0.9245
+[stage3_tulu] step 5200/8430 train 0.9141 val 0.8940 lr 1.21e-04 |g| 0.07 7,134 tok/s 50.4GB
+[stage3_tulu] step 5300/8430 train 0.7786
+[stage3_tulu] step 5400/8430 train 1.0261
+[stage3_tulu] step 5400/8430 train 0.8732 val 0.8916 lr 1.12e-04 |g| 0.08 7,151 tok/s 50.4GB
+[stage3_tulu] step 5500/8430 train 0.7016
+[stage3_tulu] step 5600/8430 train 0.7940
+[stage3_tulu] step 5600/8430 train 0.8617 val 0.8883 lr 1.02e-04 |g| 0.07 7,133 tok/s 50.4GB
+[stage3_tulu] step 5700/8430 train 1.0161
+[stage3_tulu] step 5800/8430 train 0.9225
+[stage3_tulu] step 5800/8430 train 0.8753 val 0.8873 lr 9.32e-05 |g| 0.09 7,165 tok/s 50.4GB
+[stage3_tulu] step 5900/8430 train 0.8922
+[stage3_tulu] step 6000/8430 train 0.7031
+[stage3_tulu] step 6000/8430 train 0.8751 val 0.8839 lr 8.47e-05 |g| 0.07 7,140 tok/s 50.4GB
+[stage3_tulu] step 6100/8430 train 0.8656
+[stage3_tulu] step 6200/8430 train 1.0521
+[stage3_tulu] step 6200/8430 train 0.8710 val 0.8811 lr 7.66e-05 |g| 0.08 7,089 tok/s 50.4GB
+wandb: updating run metadata
+wandb: uploading summary
+wandb: 
+wandb: Run history:
+wandb:       stage1_scratch/train_gpu_mem_gb ▁▇███
+wandb:        stage1_scratch/train_grad_norm ▁█▂▂▂
+wandb:             stage1_scratch/train_loss ▇█▁▁ 
+wandb:               stage1_scratch/train_lr █▆▃▁▁
+wandb:   stage1_scratch/train_tokens_per_sec ▁▄▃▃█
+wandb:               stage1_scratch/val_loss █▂▁▁▁
+wandb:                stage1_scratch/val_ppl █▂▁▁▁
+wandb: stage2_self_instruct/train_gpu_mem_gb ▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  stage2_self_instruct/train_grad_norm ▁█▆▆▆▆▇▅▅▅▅▅
+wandb:       stage2_self_instruct/train_loss █▅▃▂▂▂▂▁▁▁▁▁
+wandb:                                   +11 ...
+wandb: 
+wandb: Run summary:
+wandb:                      batch_size 8
+wandb:                      block_size 1792
+wandb:                       elapsed_s 69747.5
+wandb:                      grad_accum 4
+wandb:                 grad_checkpoint True
+wandb:                      model_repo manelalab/chrono-gpt...
+wandb:                     peak_gpu_gb 50.4
+wandb:                            seed 123
+wandb: stage1_scratch/train_gpu_mem_gb 50.4
+wandb:  stage1_scratch/train_grad_norm 0.61
+wandb:                             +19 ...
+wandb: 
+wandb: 🚀 View run chrono-instruct-1999-20260706-103223 at: https://wandb.ai/zhanghuanyu0619/chrono-instruct/runs/dmrtm3vd
+wandb: ⭐️ View project at: https://wandb.ai/zhanghuanyu0619/chrono-instruct
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260706_103224-dmrtm3vd/logs
+[stage3_tulu] step 6300/8430 train 0.8345
+[stage3_tulu] step 6400/8430 train 0.7394
+[stage3_tulu] step 6400/8430 train 0.8523 val 0.8798 lr 6.90e-05 |g| 0.06 7,076 tok/s 50.4GB
+[stage3_tulu] step 6500/8430 train 0.6481
+[stage3_tulu] step 6600/8430 train 0.6039
+[stage3_tulu] step 6600/8430 train 0.8559 val 0.8785 lr 6.20e-05 |g| 0.08 7,096 tok/s 50.4GB
+[stage3_tulu] step 6700/8430 train 0.9605
+[stage3_tulu] step 6800/8430 train 1.0357
+[stage3_tulu] step 6800/8430 train 0.8290 val 0.8766 lr 5.56e-05 |g| 0.07 7,135 tok/s 50.4GB
+[stage3_tulu] step 6900/8430 train 0.8568
+[stage3_tulu] step 7000/8430 train 0.9435
+[stage3_tulu] step 7000/8430 train 0.8543 val 0.8754 lr 4.99e-05 |g| 0.07 7,150 tok/s 50.4GB
+[stage3_tulu] step 7100/8430 train 0.6756
+[stage3_tulu] step 7200/8430 train 0.9147
+[stage3_tulu] step 7200/8430 train 0.8516 val 0.8740 lr 4.48e-05 |g| 0.07 7,108 tok/s 50.4GB
+[stage3_tulu] step 7300/8430 train 0.7043
+[stage3_tulu] step 7400/8430 train 0.7975
+[stage3_tulu] step 7400/8430 train 0.8426 val 0.8728 lr 4.04e-05 |g| 0.07 7,107 tok/s 50.4GB
+[stage3_tulu] step 7500/8430 train 0.7189
+[stage3_tulu] step 7600/8430 train 0.8832
+[stage3_tulu] step 7600/8430 train 0.8530 val 0.8717 lr 3.68e-05 |g| 0.07 7,092 tok/s 50.4GB
+[stage3_tulu] step 7700/8430 train 1.3241
+[stage3_tulu] step 7800/8430 train 0.7613
+[stage3_tulu] step 7800/8430 train 0.8730 val 0.8708 lr 3.39e-05 |g| 0.07 7,146 tok/s 50.4GB
+[stage3_tulu] step 7900/8430 train 0.6939
+[stage3_tulu] step 8000/8430 train 1.0956
+[stage3_tulu] step 8000/8430 train 0.8494 val 0.8702 lr 3.18e-05 |g| 0.07 7,162 tok/s 50.4GB
+[stage3_tulu] step 8100/8430 train 0.8121
+[stage3_tulu] step 8200/8430 train 0.7795
+[stage3_tulu] step 8200/8430 train 0.8546 val 0.8694 lr 3.05e-05 |g| 0.06 7,131 tok/s 50.4GB
+[stage3_tulu] step 8300/8430 train 0.6343
+[stage3_tulu] step 8400/8430 train 1.0832
+[stage3_tulu] step 8400/8430 train 0.8572 val 0.8692 lr 3.00e-05 |g| 0.07 7,158 tok/s 50.4GB
+[stage3_tulu] step 8430/8430 train 0.8419 val 0.8691 lr 3.00e-05 |g| 0.07 6,448 tok/s 50.4GB
+[stage3_tulu] restored best-val weights: val 0.8691 @ step 8430
+wrote results/chrono-instruct-1999/figure1.png
+[results] saved run artifacts -> results/chrono-instruct-1999/ (commit + push with scripts/publish_results.sh or `git add results/chrono-instruct-1999`)
+Pushed /home/ubuntu/persist/runs/chrono-instruct-1999/final -> https://huggingface.co/HZ0619/chrono-instruct-v1-19991231
+[main 5982c0c] results: chrono-instruct-1999 (loss curves + metrics + summary)
+ 4 files changed, 192 insertions(+)
+ create mode 100644 results/chrono-instruct-1999/config.yaml
+ create mode 100644 results/chrono-instruct-1999/figure1.png
+ create mode 100644 results/chrono-instruct-1999/metrics.csv
+ create mode 100644 results/chrono-instruct-1999/summary.json
+To https://github.com/zhanghuanyu0619/chrono-instruct-replication.git
+   5cb5e0e..5982c0c  main -> main
+published results/chrono-instruct-1999 -> GitHub
+==================  chrono-instruct-2005  (base manelalab/chrono-gpt-v1-20051231)  ==================
+wrote configs/_vintage_2005.yaml  (model_repo=manelalab/chrono-gpt-v1-20051231, output_dir=/home/ubuntu/persist/runs/chrono-instruct-2005, repo_id=HZ0619/chrono-instruct-v1-20051231)
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/ubuntu/.netrc.
+wandb: Currently logged in as: zhanghuanyu0619 to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.28.0
+wandb: Run data is saved locally in /lambda/nfs/Manela/chrono-instruct-replication/wandb/run-20260707_055646-18g7i2lk
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run chrono-instruct-2005-20260707-055645
+wandb: ⭐️ View project at https://wandb.ai/zhanghuanyu0619/chrono-instruct
+wandb: 🚀 View run at https://wandb.ai/zhanghuanyu0619/chrono-instruct/runs/18g7i2lk
+[data] loading cached packed blocks: cache/packed-7ad00a00d364bb4f.pt
+=== stage1_scratch: 34 train blocks, 1 val blocks ===
+[stage1_scratch] step 0/3 train 1.7327 val 1.7671 lr 3.00e-04 |g| 0.00 0 tok/s 17.9GB
+[stage1_scratch] step 1/3 train 1.8058
+[stage1_scratch] step 1/3 train 1.8058 val 1.3806 lr 2.32e-04 |g| 2.46 9,130 tok/s 44.8GB
+[stage1_scratch] step 2/3 train 1.4089
+[stage1_scratch] step 2/3 train 1.4089 val 1.2356 lr 9.75e-05 |g| 0.90 5,553 tok/s 50.4GB
+[stage1_scratch] step 3/3 train 1.3400
+[stage1_scratch] step 3/3 train 1.3400 val 1.2098 lr 3.00e-05 |g| 0.42 4,697 tok/s 50.4GB
+[stage1_scratch] step 3/3 train nan val 1.2098 lr 3.00e-05 |g| 0.42 18,509 tok/s 50.4GB
+[stage1_scratch] restored best-val weights: val 1.2098 @ step 3
+=== stage2_self_instruct: 3376 train blocks, 176 val blocks ===
+[stage2_self_instruct] step 0/210 train 2.2515 val 2.1793 lr 5.00e-05 |g| 0.00 0 tok/s 50.4GB
+[stage2_self_instruct] step 20/210 train 1.3452
+[stage2_self_instruct] step 20/210 train 1.6684 val 1.4495 lr 2.97e-04 |g| 0.19 7,688 tok/s 50.4GB
+[stage2_self_instruct] step 40/210 train 1.3893
+[stage2_self_instruct] step 40/210 train 1.3866 val 1.3387 lr 2.82e-04 |g| 0.18 6,688 tok/s 50.4GB
+[stage2_self_instruct] step 60/210 train 1.2874
+[stage2_self_instruct] step 60/210 train 1.3132 val 1.2845 lr 2.56e-04 |g| 0.16 6,730 tok/s 50.4GB
+[stage2_self_instruct] step 80/210 train 1.4238
+[stage2_self_instruct] step 80/210 train 1.3010 val 1.2542 lr 2.21e-04 |g| 0.17 6,802 tok/s 50.4GB
+[stage2_self_instruct] step 100/210 train 1.2709
+[stage2_self_instruct] step 100/210 train 1.2781 val 1.2287 lr 1.82e-04 |g| 0.16 6,743 tok/s 50.4GB
+[stage2_self_instruct] step 120/210 train 1.0354
+[stage2_self_instruct] step 120/210 train 1.1600 val 1.2178 lr 1.40e-04 |g| 0.15 6,602 tok/s 50.4GB
+[stage2_self_instruct] step 140/210 train 1.0541
+[stage2_self_instruct] step 140/210 train 1.1084 val 1.2049 lr 1.01e-04 |g| 0.15 6,869 tok/s 50.4GB
+[stage2_self_instruct] step 160/210 train 1.1469
+[stage2_self_instruct] step 160/210 train 1.0804 val 1.1963 lr 6.81e-05 |g| 0.16 6,725 tok/s 50.4GB
+[stage2_self_instruct] step 180/210 train 1.0802
+[stage2_self_instruct] step 180/210 train 1.0760 val 1.1888 lr 4.42e-05 |g| 0.14 6,724 tok/s 50.4GB
+[stage2_self_instruct] step 200/210 train 1.2058
+[stage2_self_instruct] step 200/210 train 1.1131 val 1.1842 lr 3.16e-05 |g| 0.14 6,736 tok/s 50.4GB
+[stage2_self_instruct] step 210/210 train 1.1164 val 1.1827 lr 3.00e-05 |g| 0.13 6,212 tok/s 50.4GB
+[stage2_self_instruct] restored best-val weights: val 1.1827 @ step 210
+=== stage3_tulu: 134885 train blocks, 500 val blocks ===
+[stage3_tulu] step 0/8430 train 1.9759 val 2.0196 lr 1.19e-06 |g| 0.00 0 tok/s 50.4GB
+[stage3_tulu] step 100/8430 train 1.6202
+[stage3_tulu] step 200/8430 train 1.2795
+[stage3_tulu] step 200/8430 train 1.3805 val 1.1802 lr 2.39e-04 |g| 0.12 7,297 tok/s 50.4GB
+[stage3_tulu] step 300/8430 train 1.1196
+[stage3_tulu] step 400/8430 train 1.2008
+[stage3_tulu] step 400/8430 train 1.1335 val 1.0881 lr 3.00e-04 |g| 0.13 7,151 tok/s 50.4GB
+[stage3_tulu] step 500/8430 train 1.1123
+[stage3_tulu] step 600/8430 train 1.0151
+[stage3_tulu] step 600/8430 train 1.0850 val 1.0441 lr 2.99e-04 |g| 0.12 7,137 tok/s 50.4GB
+[stage3_tulu] step 700/8430 train 0.9732
+[stage3_tulu] step 800/8430 train 0.9122
+[stage3_tulu] step 800/8430 train 1.0479 val 1.0150 lr 2.97e-04 |g| 0.08 7,155 tok/s 50.4GB
+[stage3_tulu] step 900/8430 train 0.8886
+[stage3_tulu] step 1000/8430 train 0.8559
+[stage3_tulu] step 1000/8430 train 1.0054 val 0.9942 lr 2.94e-04 |g| 0.10 7,156 tok/s 50.4GB
+[stage3_tulu] step 1100/8430 train 1.1296
+[stage3_tulu] step 1200/8430 train 0.8594
+[stage3_tulu] step 1200/8430 train 0.9869 val 0.9759 lr 2.91e-04 |g| 0.09 7,143 tok/s 50.4GB
+[stage3_tulu] step 1300/8430 train 1.1971
+[stage3_tulu] step 1400/8430 train 0.8933
+[stage3_tulu] step 1400/8430 train 0.9874 val 0.9617 lr 2.87e-04 |g| 0.08 7,170 tok/s 50.4GB
+[stage3_tulu] step 1500/8430 train 0.8880
+[stage3_tulu] step 1600/8430 train 0.9222
+[stage3_tulu] step 1600/8430 train 0.9587 val 0.9499 lr 2.82e-04 |g| 0.09 7,108 tok/s 50.4GB
+[stage3_tulu] step 1700/8430 train 1.0415
+[stage3_tulu] step 1800/8430 train 0.7316
+[stage3_tulu] step 1800/8430 train 0.9436 val 0.9390 lr 2.77e-04 |g| 0.08 7,153 tok/s 50.4GB
+[stage3_tulu] step 1900/8430 train 0.8639
+[stage3_tulu] step 2000/8430 train 1.1204
+[stage3_tulu] step 2000/8430 train 0.9271 val 0.9312 lr 2.71e-04 |g| 0.09 7,154 tok/s 50.4GB
+[stage3_tulu] step 2100/8430 train 0.9032
+[stage3_tulu] step 2200/8430 train 0.9048
+[stage3_tulu] step 2200/8430 train 0.9437 val 0.9208 lr 2.64e-04 |g| 0.09 7,142 tok/s 50.4GB
+[stage3_tulu] step 2300/8430 train 0.8524
+[stage3_tulu] step 2400/8430 train 0.7188
+[stage3_tulu] step 2400/8430 train 0.9129 val 0.9128 lr 2.57e-04 |g| 0.10 7,137 tok/s 50.4GB
+[stage3_tulu] step 2500/8430 train 1.1426
+[stage3_tulu] step 2600/8430 train 0.7613
+[stage3_tulu] step 2600/8430 train 0.9014 val 0.9045 lr 2.49e-04 |g| 0.07 7,133 tok/s 50.4GB
+[stage3_tulu] step 2700/8430 train 0.9356
+[stage3_tulu] step 2800/8430 train 0.8614
+[stage3_tulu] step 2800/8430 train 0.9079 val 0.8989 lr 2.40e-04 |g| 0.07 7,167 tok/s 50.4GB
+[stage3_tulu] step 2900/8430 train 0.6847
+[stage3_tulu] step 3000/8430 train 0.8561
+[stage3_tulu] step 3000/8430 train 0.8873 val 0.8913 lr 2.32e-04 |g| 0.09 7,156 tok/s 50.4GB
+[stage3_tulu] step 3100/8430 train 1.3080
+[stage3_tulu] step 3200/8430 train 0.8458
+[stage3_tulu] step 3200/8430 train 0.9286 val 0.8874 lr 2.22e-04 |g| 0.07 7,112 tok/s 50.4GB
+[stage3_tulu] step 3300/8430 train 0.9019
+[stage3_tulu] step 3400/8430 train 0.8594
+[stage3_tulu] step 3400/8430 train 0.8929 val 0.8817 lr 2.13e-04 |g| 0.07 7,149 tok/s 50.4GB
+[stage3_tulu] step 3500/8430 train 0.8771
+[stage3_tulu] step 3600/8430 train 0.8844
+[stage3_tulu] step 3600/8430 train 0.8782 val 0.8767 lr 2.03e-04 |g| 0.07 7,138 tok/s 50.4GB
+[stage3_tulu] step 3700/8430 train 0.6622
+[stage3_tulu] step 3800/8430 train 0.7266
+[stage3_tulu] step 3800/8430 train 0.8956 val 0.8727 lr 1.93e-04 |g| 0.08 7,134 tok/s 50.4GB
+[stage3_tulu] step 3900/8430 train 0.7082
+[stage3_tulu] step 4000/8430 train 0.8188
+[stage3_tulu] step 4000/8430 train 0.8635 val 0.8686 lr 1.83e-04 |g| 0.07 7,149 tok/s 50.4GB
+[stage3_tulu] step 4100/8430 train 1.0164
+[stage3_tulu] step 4200/8430 train 0.6482
+[stage3_tulu] step 4200/8430 train 0.8874 val 0.8637 lr 1.72e-04 |g| 0.07 7,103 tok/s 50.4GB
+[stage3_tulu] step 4300/8430 train 0.6166
+[stage3_tulu] step 4400/8430 train 0.9714
+[stage3_tulu] step 4400/8430 train 0.8479 val 0.8614 lr 1.62e-04 |g| 0.08 7,172 tok/s 50.4GB
+[stage3_tulu] step 4500/8430 train 0.7124
+[stage3_tulu] step 4600/8430 train 0.7045
+[stage3_tulu] step 4600/8430 train 0.8242 val 0.8578 lr 1.52e-04 |g| 0.08 7,139 tok/s 50.4GB
+[stage3_tulu] step 4700/8430 train 0.6219
+[stage3_tulu] step 4800/8430 train 0.7088
+[stage3_tulu] step 4800/8430 train 0.8475 val 0.8549 lr 1.41e-04 |g| 0.07 7,147 tok/s 50.4GB
+[stage3_tulu] step 4900/8430 train 0.8293
+[stage3_tulu] step 5000/8430 train 0.8060
+[stage3_tulu] step 5000/8430 train 0.8255 val 0.8525 lr 1.31e-04 |g| 0.07 7,146 tok/s 50.4GB
+[stage3_tulu] step 5100/8430 train 0.9129
+[stage3_tulu] step 5200/8430 train 0.8857
+[stage3_tulu] step 5200/8430 train 0.8678 val 0.8495 lr 1.21e-04 |g| 0.07 7,123 tok/s 50.4GB
+[stage3_tulu] step 5300/8430 train 0.7384
+[stage3_tulu] step 5400/8430 train 0.9696
+[stage3_tulu] step 5400/8430 train 0.8286 val 0.8480 lr 1.12e-04 |g| 0.07 7,150 tok/s 50.4GB
+[stage3_tulu] step 5500/8430 train 0.6588
+[stage3_tulu] step 5600/8430 train 0.7374
+[stage3_tulu] step 5600/8430 train 0.8185 val 0.8453 lr 1.02e-04 |g| 0.07 7,134 tok/s 50.4GB
+[stage3_tulu] step 5700/8430 train 0.9720
+[stage3_tulu] step 5800/8430 train 0.8422
+[stage3_tulu] step 5800/8430 train 0.8299 val 0.8442 lr 9.32e-05 |g| 0.07 7,090 tok/s 50.4GB
+[stage3_tulu] step 5900/8430 train 0.8504
+[stage3_tulu] step 6000/8430 train 0.6691
+[stage3_tulu] step 6000/8430 train 0.8309 val 0.8415 lr 8.47e-05 |g| 0.07 6,991 tok/s 50.4GB
+[stage3_tulu] step 6100/8430 train 0.8175
+[stage3_tulu] step 6200/8430 train 1.0139
+[stage3_tulu] step 6200/8430 train 0.8276 val 0.8392 lr 7.66e-05 |g| 0.07 6,932 tok/s 50.4GB
+wandb: updating run metadata
+wandb: uploading summary
+wandb: 
+wandb: Run history:
+wandb:       stage1_scratch/train_gpu_mem_gb ▁▇███
+wandb:        stage1_scratch/train_grad_norm ▁█▄▂▂
+wandb:             stage1_scratch/train_loss ▇█▂▁ 
+wandb:               stage1_scratch/train_lr █▆▃▁▁
+wandb:   stage1_scratch/train_tokens_per_sec ▁▄▃▃█
+wandb:               stage1_scratch/val_loss █▃▁▁▁
+wandb:                stage1_scratch/val_ppl █▃▁▁▁
+wandb: stage2_self_instruct/train_gpu_mem_gb ▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  stage2_self_instruct/train_grad_norm ▁██▇▇▇▇▇▇▆▆▆
+wandb:       stage2_self_instruct/train_loss █▅▃▂▂▂▂▁▁▁▁▁
+wandb:                                   +11 ...
+wandb: 
+wandb: Run summary:
+wandb:                      batch_size 8
+wandb:                      block_size 1792
+wandb:                       elapsed_s 69875.7
+wandb:                      grad_accum 4
+wandb:                 grad_checkpoint True
+wandb:                      model_repo manelalab/chrono-gpt...
+wandb:                     peak_gpu_gb 50.4
+wandb:                            seed 123
+wandb: stage1_scratch/train_gpu_mem_gb 50.4
+wandb:  stage1_scratch/train_grad_norm 0.418
+wandb:                             +19 ...
+wandb: 
+wandb: 🚀 View run chrono-instruct-2005-20260707-055645 at: https://wandb.ai/zhanghuanyu0619/chrono-instruct/runs/18g7i2lk
+wandb: ⭐️ View project at: https://wandb.ai/zhanghuanyu0619/chrono-instruct
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260707_055646-18g7i2lk/logs
+[stage3_tulu] step 6300/8430 train 0.8011
+[stage3_tulu] step 6400/8430 train 0.6979
+[stage3_tulu] step 6400/8430 train 0.8092 val 0.8380 lr 6.90e-05 |g| 0.06 6,954 tok/s 50.4GB
+[stage3_tulu] step 6500/8430 train 0.6015
+[stage3_tulu] step 6600/8430 train 0.5755
+[stage3_tulu] step 6600/8430 train 0.8118 val 0.8365 lr 6.20e-05 |g| 0.08 7,080 tok/s 50.4GB
+[stage3_tulu] step 6700/8430 train 0.9111
+[stage3_tulu] step 6800/8430 train 0.9753
+[stage3_tulu] step 6800/8430 train 0.7867 val 0.8346 lr 5.56e-05 |g| 0.07 7,123 tok/s 50.4GB
+[stage3_tulu] step 6900/8430 train 0.8220
+[stage3_tulu] step 7000/8430 train 0.9033
+[stage3_tulu] step 7000/8430 train 0.8116 val 0.8336 lr 4.99e-05 |g| 0.07 7,122 tok/s 50.4GB
+[stage3_tulu] step 7100/8430 train 0.6428
+[stage3_tulu] step 7200/8430 train 0.8846
+[stage3_tulu] step 7200/8430 train 0.8088 val 0.8323 lr 4.48e-05 |g| 0.07 7,090 tok/s 50.4GB
+[stage3_tulu] step 7300/8430 train 0.6559
+[stage3_tulu] step 7400/8430 train 0.7693
+[stage3_tulu] step 7400/8430 train 0.8006 val 0.8312 lr 4.04e-05 |g| 0.06 7,119 tok/s 50.4GB
+[stage3_tulu] step 7500/8430 train 0.6849
+[stage3_tulu] step 7600/8430 train 0.8458
+[stage3_tulu] step 7600/8430 train 0.8101 val 0.8303 lr 3.68e-05 |g| 0.06 7,088 tok/s 50.4GB
+[stage3_tulu] step 7700/8430 train 1.2695
+[stage3_tulu] step 7800/8430 train 0.7280
+[stage3_tulu] step 7800/8430 train 0.8295 val 0.8297 lr 3.39e-05 |g| 0.07 7,090 tok/s 50.4GB
+[stage3_tulu] step 7900/8430 train 0.6561
+[stage3_tulu] step 8000/8430 train 1.0457
+[stage3_tulu] step 8000/8430 train 0.8080 val 0.8292 lr 3.18e-05 |g| 0.07 7,095 tok/s 50.4GB
+[stage3_tulu] step 8100/8430 train 0.7667
+[stage3_tulu] step 8200/8430 train 0.7420
+[stage3_tulu] step 8200/8430 train 0.8125 val 0.8287 lr 3.05e-05 |g| 0.06 7,092 tok/s 50.4GB
+[stage3_tulu] step 8300/8430 train 0.6032
+[stage3_tulu] step 8400/8430 train 1.0257
+[stage3_tulu] step 8400/8430 train 0.8148 val 0.8281 lr 3.00e-05 |g| 0.07 7,111 tok/s 50.4GB
+[stage3_tulu] step 8430/8430 train 0.8005 val 0.8279 lr 3.00e-05 |g| 0.08 6,381 tok/s 50.4GB
+[stage3_tulu] restored best-val weights: val 0.8279 @ step 8430
+wrote results/chrono-instruct-2005/figure1.png
+[results] saved run artifacts -> results/chrono-instruct-2005/ (commit + push with scripts/publish_results.sh or `git add results/chrono-instruct-2005`)
+Pushed /home/ubuntu/persist/runs/chrono-instruct-2005/final -> https://huggingface.co/HZ0619/chrono-instruct-v1-20051231
+[main 7859cb0] results: chrono-instruct-2005 (loss curves + metrics + summary)
+ 4 files changed, 192 insertions(+)
+ create mode 100644 results/chrono-instruct-2005/config.yaml
+ create mode 100644 results/chrono-instruct-2005/figure1.png
+ create mode 100644 results/chrono-instruct-2005/metrics.csv
+ create mode 100644 results/chrono-instruct-2005/summary.json
+To https://github.com/zhanghuanyu0619/chrono-instruct-replication.git
+   5982c0c..7859cb0  main -> main
+published results/chrono-instruct-2005 -> GitHub
+==================  chrono-instruct-2010  (base manelalab/chrono-gpt-v1-20101231)  ==================
+wrote configs/_vintage_2010.yaml  (model_repo=manelalab/chrono-gpt-v1-20101231, output_dir=/home/ubuntu/persist/runs/chrono-instruct-2010, repo_id=HZ0619/chrono-instruct-v1-20101231)
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/ubuntu/.netrc.
+wandb: Currently logged in as: zhanghuanyu0619 to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.28.0
+wandb: Run data is saved locally in /lambda/nfs/Manela/chrono-instruct-replication/wandb/run-20260708_012322-ihh4o7db
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run chrono-instruct-2010-20260708-012322
+wandb: ⭐️ View project at https://wandb.ai/zhanghuanyu0619/chrono-instruct
+wandb: 🚀 View run at https://wandb.ai/zhanghuanyu0619/chrono-instruct/runs/ihh4o7db
+[data] loading cached packed blocks: cache/packed-7ad00a00d364bb4f.pt
+=== stage1_scratch: 34 train blocks, 1 val blocks ===
+[stage1_scratch] step 0/3 train 1.8912 val 1.8534 lr 3.00e-04 |g| 0.00 0 tok/s 17.9GB
+[stage1_scratch] step 1/3 train 1.9457
+[stage1_scratch] step 1/3 train 1.9457 val 1.4289 lr 2.32e-04 |g| 3.35 9,121 tok/s 44.8GB
+[stage1_scratch] step 2/3 train 1.4880
+[stage1_scratch] step 2/3 train 1.4880 val 1.2470 lr 9.75e-05 |g| 1.85 5,617 tok/s 50.4GB
+[stage1_scratch] step 3/3 train 1.3630
+[stage1_scratch] step 3/3 train 1.3630 val 1.2147 lr 3.00e-05 |g| 0.59 4,684 tok/s 50.4GB
+[stage1_scratch] step 3/3 train nan val 1.2147 lr 3.00e-05 |g| 0.59 18,540 tok/s 50.4GB
+[stage1_scratch] restored best-val weights: val 1.2147 @ step 3
+=== stage2_self_instruct: 3376 train blocks, 176 val blocks ===
+[stage2_self_instruct] step 0/210 train 2.1800 val 2.0958 lr 5.00e-05 |g| 0.00 0 tok/s 50.4GB
+[stage2_self_instruct] step 20/210 train 1.3044
+[stage2_self_instruct] step 20/210 train 1.5826 val 1.3838 lr 2.97e-04 |g| 0.20 7,645 tok/s 50.4GB
+[stage2_self_instruct] step 40/210 train 1.3346
+[stage2_self_instruct] step 40/210 train 1.3253 val 1.2834 lr 2.82e-04 |g| 0.16 6,647 tok/s 50.4GB
+[stage2_self_instruct] step 60/210 train 1.2261
+[stage2_self_instruct] step 60/210 train 1.2545 val 1.2360 lr 2.56e-04 |g| 0.16 6,736 tok/s 50.4GB
+[stage2_self_instruct] step 80/210 train 1.3739
+[stage2_self_instruct] step 80/210 train 1.2503 val 1.2058 lr 2.21e-04 |g| 0.25 6,812 tok/s 50.4GB
+[stage2_self_instruct] step 100/210 train 1.2244
+[stage2_self_instruct] step 100/210 train 1.2281 val 1.1841 lr 1.82e-04 |g| 0.15 6,737 tok/s 50.4GB
+[stage2_self_instruct] step 120/210 train 0.9846
+[stage2_self_instruct] step 120/210 train 1.1072 val 1.1754 lr 1.40e-04 |g| 0.16 6,553 tok/s 50.4GB
+[stage2_self_instruct] step 140/210 train 1.0020
+[stage2_self_instruct] step 140/210 train 1.0588 val 1.1623 lr 1.01e-04 |g| 0.15 6,847 tok/s 50.4GB
+[stage2_self_instruct] step 160/210 train 1.1078
+[stage2_self_instruct] step 160/210 train 1.0322 val 1.1526 lr 6.81e-05 |g| 0.16 6,707 tok/s 50.4GB
+[stage2_self_instruct] step 180/210 train 1.0407
+[stage2_self_instruct] step 180/210 train 1.0283 val 1.1467 lr 4.42e-05 |g| 0.14 6,731 tok/s 50.4GB
+[stage2_self_instruct] step 200/210 train 1.1503
+[stage2_self_instruct] step 200/210 train 1.0642 val 1.1420 lr 3.16e-05 |g| 0.14 6,713 tok/s 50.4GB
+[stage2_self_instruct] step 210/210 train 1.0725 val 1.1390 lr 3.00e-05 |g| 0.13 6,176 tok/s 50.4GB
+[stage2_self_instruct] restored best-val weights: val 1.1390 @ step 210
+=== stage3_tulu: 134885 train blocks, 500 val blocks ===
+[stage3_tulu] step 0/8430 train 1.9711 val 1.9859 lr 1.19e-06 |g| 0.00 0 tok/s 50.4GB
+[stage3_tulu] step 100/8430 train 1.5593
+[stage3_tulu] step 200/8430 train 1.2495
+[stage3_tulu] step 200/8430 train 1.3432 val 1.1529 lr 2.39e-04 |g| 0.13 7,248 tok/s 50.4GB
+[stage3_tulu] step 300/8430 train 1.1007
+[stage3_tulu] step 400/8430 train 1.1780
+[stage3_tulu] step 400/8430 train 1.1064 val 1.0671 lr 3.00e-04 |g| 0.13 7,081 tok/s 50.4GB
+[stage3_tulu] step 500/8430 train 1.0902
+[stage3_tulu] step 600/8430 train 0.9906
+[stage3_tulu] step 600/8430 train 1.0612 val 1.0230 lr 2.99e-04 |g| 0.11 7,027 tok/s 50.4GB
+[stage3_tulu] step 700/8430 train 0.9506
+[stage3_tulu] step 800/8430 train 0.9066
+[stage3_tulu] step 800/8430 train 1.0228 val 1.0009 lr 2.97e-04 |g| 0.11 7,049 tok/s 50.4GB
+[stage3_tulu] step 900/8430 train 0.8811
+[stage3_tulu] step 1000/8430 train 0.8388
+[stage3_tulu] step 1000/8430 train 0.9874 val 0.9760 lr 2.94e-04 |g| 0.10 7,068 tok/s 50.4GB
+[stage3_tulu] step 1100/8430 train 1.1036
+[stage3_tulu] step 1200/8430 train 0.8507
+[stage3_tulu] step 1200/8430 train 0.9678 val 0.9579 lr 2.91e-04 |g| 0.11 7,102 tok/s 50.4GB
+[stage3_tulu] step 1300/8430 train 1.1825
+[stage3_tulu] step 1400/8430 train 0.8738
+[stage3_tulu] step 1400/8430 train 0.9681 val 0.9459 lr 2.87e-04 |g| 0.09 7,121 tok/s 50.4GB
+[stage3_tulu] step 1500/8430 train 0.8795
+[stage3_tulu] step 1600/8430 train 0.9121
+[stage3_tulu] step 1600/8430 train 0.9393 val 0.9325 lr 2.82e-04 |g| 0.08 7,075 tok/s 50.4GB
+[stage3_tulu] step 1700/8430 train 1.0303
+[stage3_tulu] step 1800/8430 train 0.7185
+[stage3_tulu] step 1800/8430 train 0.9253 val 0.9208 lr 2.77e-04 |g| 0.08 7,098 tok/s 50.4GB
+[stage3_tulu] step 1900/8430 train 0.8485
+[stage3_tulu] step 2000/8430 train 1.0995
+[stage3_tulu] step 2000/8430 train 0.9115 val 0.9129 lr 2.71e-04 |g| 0.08 7,085 tok/s 50.4GB
+[stage3_tulu] step 2100/8430 train 0.8889
+[stage3_tulu] step 2200/8430 train 0.8911
+[stage3_tulu] step 2200/8430 train 0.9258 val 0.9041 lr 2.64e-04 |g| 0.09 7,075 tok/s 50.4GB
+[stage3_tulu] step 2300/8430 train 0.8360
+[stage3_tulu] step 2400/8430 train 0.7080
+[stage3_tulu] step 2400/8430 train 0.8959 val 0.8967 lr 2.57e-04 |g| 0.11 7,089 tok/s 50.4GB
+[stage3_tulu] step 2500/8430 train 1.1094
+[stage3_tulu] step 2600/8430 train 0.7524
+[stage3_tulu] step 2600/8430 train 0.8843 val 0.8885 lr 2.49e-04 |g| 0.08 7,069 tok/s 50.4GB
+[stage3_tulu] step 2700/8430 train 0.9175
+[stage3_tulu] step 2800/8430 train 0.8483
+[stage3_tulu] step 2800/8430 train 0.8909 val 0.8835 lr 2.40e-04 |g| 0.07 7,110 tok/s 50.4GB
+[stage3_tulu] step 2900/8430 train 0.6722
+[stage3_tulu] step 3000/8430 train 0.8374
+[stage3_tulu] step 3000/8430 train 0.8714 val 0.8761 lr 2.32e-04 |g| 0.08 7,191 tok/s 50.4GB
+[stage3_tulu] step 3100/8430 train 1.2793
+[stage3_tulu] step 3200/8430 train 0.8322
+[stage3_tulu] step 3200/8430 train 0.9116 val 0.8724 lr 2.22e-04 |g| 0.08 7,147 tok/s 50.4GB
+[stage3_tulu] step 3300/8430 train 0.8861
+[stage3_tulu] step 3400/8430 train 0.8457
+[stage3_tulu] step 3400/8430 train 0.8768 val 0.8667 lr 2.13e-04 |g| 0.07 7,176 tok/s 50.4GB
+[stage3_tulu] step 3500/8430 train 0.8506
+[stage3_tulu] step 3600/8430 train 0.8682
+[stage3_tulu] step 3600/8430 train 0.8613 val 0.8612 lr 2.03e-04 |g| 0.07 7,171 tok/s 50.4GB
+[stage3_tulu] step 3700/8430 train 0.6580
+[stage3_tulu] step 3800/8430 train 0.7049
+[stage3_tulu] step 3800/8430 train 0.8786 val 0.8578 lr 1.93e-04 |g| 0.08 7,220 tok/s 50.4GB
+[stage3_tulu] step 3900/8430 train 0.6949
+[stage3_tulu] step 4000/8430 train 0.8038
+[stage3_tulu] step 4000/8430 train 0.8487 val 0.8536 lr 1.83e-04 |g| 0.08 7,208 tok/s 50.4GB
+[stage3_tulu] step 4100/8430 train 0.9712
+[stage3_tulu] step 4200/8430 train 0.6435
+[stage3_tulu] step 4200/8430 train 0.8695 val 0.8491 lr 1.72e-04 |g| 0.07 7,186 tok/s 50.4GB
+[stage3_tulu] step 4300/8430 train 0.6120
+[stage3_tulu] step 4400/8430 train 0.9536
+[stage3_tulu] step 4400/8430 train 0.8311 val 0.8469 lr 1.62e-04 |g| 0.07 7,184 tok/s 50.4GB
+[stage3_tulu] step 4500/8430 train 0.7045
+[stage3_tulu] step 4600/8430 train 0.6930
+[stage3_tulu] step 4600/8430 train 0.8081 val 0.8434 lr 1.52e-04 |g| 0.08 7,185 tok/s 50.4GB
+[stage3_tulu] step 4700/8430 train 0.6076
+[stage3_tulu] step 4800/8430 train 0.7053
+[stage3_tulu] step 4800/8430 train 0.8317 val 0.8408 lr 1.41e-04 |g| 0.07 7,201 tok/s 50.4GB
+[stage3_tulu] step 4900/8430 train 0.8170
+[stage3_tulu] step 5000/8430 train 0.7968
+[stage3_tulu] step 5000/8430 train 0.8102 val 0.8384 lr 1.31e-04 |g| 0.08 7,200 tok/s 50.4GB
+[stage3_tulu] step 5100/8430 train 0.9001
+[stage3_tulu] step 5200/8430 train 0.8731
+[stage3_tulu] step 5200/8430 train 0.8503 val 0.8356 lr 1.21e-04 |g| 0.07 7,154 tok/s 50.4GB
+[stage3_tulu] step 5300/8430 train 0.7345
+[stage3_tulu] step 5400/8430 train 0.9288
+[stage3_tulu] step 5400/8430 train 0.8131 val 0.8341 lr 1.12e-04 |g| 0.07 7,164 tok/s 50.4GB
+[stage3_tulu] step 5500/8430 train 0.6418
+[stage3_tulu] step 5600/8430 train 0.7265
+[stage3_tulu] step 5600/8430 train 0.8035 val 0.8311 lr 1.02e-04 |g| 0.07 7,147 tok/s 50.4GB
+[stage3_tulu] step 5700/8430 train 0.9545
+[stage3_tulu] step 5800/8430 train 0.8204
+[stage3_tulu] step 5800/8430 train 0.8141 val 0.8298 lr 9.32e-05 |g| 0.07 7,218 tok/s 50.4GB
+[stage3_tulu] step 5900/8430 train 0.8413
+[stage3_tulu] step 6000/8430 train 0.6591
+[stage3_tulu] step 6000/8430 train 0.8154 val 0.8278 lr 8.47e-05 |g| 0.07 7,193 tok/s 50.4GB
+[stage3_tulu] step 6100/8430 train 0.7989
+[stage3_tulu] step 6200/8430 train 1.0051
+[stage3_tulu] step 6200/8430 train 0.8121 val 0.8249 lr 7.66e-05 |g| 0.07 7,117 tok/s 50.4GB
+wandb: updating run metadata
+wandb: uploading summary
+wandb: 
+wandb: Run history:
+wandb:       stage1_scratch/train_gpu_mem_gb ▁▇███
+wandb:        stage1_scratch/train_grad_norm ▁█▅▂▂
+wandb:             stage1_scratch/train_loss ▇█▃▁ 
+wandb:               stage1_scratch/train_lr █▆▃▁▁
+wandb:   stage1_scratch/train_tokens_per_sec ▁▄▃▃█
+wandb:               stage1_scratch/val_loss █▃▁▁▁
+wandb:                stage1_scratch/val_ppl █▃▁▁▁
+wandb: stage2_self_instruct/train_gpu_mem_gb ▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  stage2_self_instruct/train_grad_norm ▁▇▆▅█▅▆▅▆▅▅▅
+wandb:       stage2_self_instruct/train_loss █▄▃▂▂▂▁▁▁▁▁▁
+wandb:                                   +11 ...
+wandb: 
+wandb: Run summary:
+wandb:                      batch_size 8
+wandb:                      block_size 1792
+wandb:                       elapsed_s 69756
+wandb:                      grad_accum 4
+wandb:                 grad_checkpoint True
+wandb:                      model_repo manelalab/chrono-gpt...
+wandb:                     peak_gpu_gb 50.4
+wandb:                            seed 123
+wandb: stage1_scratch/train_gpu_mem_gb 50.4
+wandb:  stage1_scratch/train_grad_norm 0.587
+wandb:                             +19 ...
+wandb: 
+wandb: 🚀 View run chrono-instruct-2010-20260708-012322 at: https://wandb.ai/zhanghuanyu0619/chrono-instruct/runs/ihh4o7db
+wandb: ⭐️ View project at: https://wandb.ai/zhanghuanyu0619/chrono-instruct
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260708_012322-ihh4o7db/logs
+[stage3_tulu] step 6300/8430 train 0.7952
+[stage3_tulu] step 6400/8430 train 0.6827
+[stage3_tulu] step 6400/8430 train 0.7935 val 0.8238 lr 6.90e-05 |g| 0.07 7,160 tok/s 50.4GB
+[stage3_tulu] step 6500/8430 train 0.5899
+[stage3_tulu] step 6600/8430 train 0.5670
+[stage3_tulu] step 6600/8430 train 0.7960 val 0.8223 lr 6.20e-05 |g| 0.07 7,120 tok/s 50.4GB
+[stage3_tulu] step 6700/8430 train 0.8968
+[stage3_tulu] step 6800/8430 train 0.9423
+[stage3_tulu] step 6800/8430 train 0.7725 val 0.8208 lr 5.56e-05 |g| 0.07 7,069 tok/s 50.4GB
+[stage3_tulu] step 6900/8430 train 0.8118
+[stage3_tulu] step 7000/8430 train 0.8864
+[stage3_tulu] step 7000/8430 train 0.7964 val 0.8194 lr 4.99e-05 |g| 0.07 7,101 tok/s 50.4GB
+[stage3_tulu] step 7100/8430 train 0.6254
+[stage3_tulu] step 7200/8430 train 0.8637
+[stage3_tulu] step 7200/8430 train 0.7930 val 0.8182 lr 4.48e-05 |g| 0.07 7,104 tok/s 50.4GB
+[stage3_tulu] step 7300/8430 train 0.6419
+[stage3_tulu] step 7400/8430 train 0.7548
+[stage3_tulu] step 7400/8430 train 0.7861 val 0.8169 lr 4.04e-05 |g| 0.06 7,131 tok/s 50.4GB
+[stage3_tulu] step 7500/8430 train 0.6776
+[stage3_tulu] step 7600/8430 train 0.8317
+[stage3_tulu] step 7600/8430 train 0.7941 val 0.8163 lr 3.68e-05 |g| 0.06 7,115 tok/s 50.4GB
+[stage3_tulu] step 7700/8430 train 1.2482
+[stage3_tulu] step 7800/8430 train 0.7188
+[stage3_tulu] step 7800/8430 train 0.8130 val 0.8156 lr 3.39e-05 |g| 0.07 7,163 tok/s 50.4GB
+[stage3_tulu] step 7900/8430 train 0.6532
+[stage3_tulu] step 8000/8430 train 1.0010
+[stage3_tulu] step 8000/8430 train 0.7927 val 0.8151 lr 3.18e-05 |g| 0.08 7,126 tok/s 50.4GB
+[stage3_tulu] step 8100/8430 train 0.7565
+[stage3_tulu] step 8200/8430 train 0.7293
+[stage3_tulu] step 8200/8430 train 0.7971 val 0.8145 lr 3.05e-05 |g| 0.06 7,090 tok/s 50.4GB
+[stage3_tulu] step 8300/8430 train 0.5959
+[stage3_tulu] step 8400/8430 train 1.0000
+[stage3_tulu] step 8400/8430 train 0.7994 val 0.8137 lr 3.00e-05 |g| 0.06 7,129 tok/s 50.4GB
+[stage3_tulu] step 8430/8430 train 0.7844 val 0.8137 lr 3.00e-05 |g| 0.08 6,431 tok/s 50.4GB
+[stage3_tulu] restored best-val weights: val 0.8137 @ step 8430
+wrote results/chrono-instruct-2010/figure1.png
+[results] saved run artifacts -> results/chrono-instruct-2010/ (commit + push with scripts/publish_results.sh or `git add results/chrono-instruct-2010`)
+Pushed /home/ubuntu/persist/runs/chrono-instruct-2010/final -> https://huggingface.co/HZ0619/chrono-instruct-v1-20101231
+[main 9035b73] results: chrono-instruct-2010 (loss curves + metrics + summary)
+ 4 files changed, 192 insertions(+)
+ create mode 100644 results/chrono-instruct-2010/config.yaml
+ create mode 100644 results/chrono-instruct-2010/figure1.png
+ create mode 100644 results/chrono-instruct-2010/metrics.csv
+ create mode 100644 results/chrono-instruct-2010/summary.json
+To https://github.com/zhanghuanyu0619/chrono-instruct-replication.git
+   7859cb0..9035b73  main -> main
+published results/chrono-instruct-2010 -> GitHub
+==================  chrono-instruct-2015  (base manelalab/chrono-gpt-v1-20151231)  ==================
+wrote configs/_vintage_2015.yaml  (model_repo=manelalab/chrono-gpt-v1-20151231, output_dir=/home/ubuntu/persist/runs/chrono-instruct-2015, repo_id=HZ0619/chrono-instruct-v1-20151231)
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/ubuntu/.netrc.
+wandb: Currently logged in as: zhanghuanyu0619 to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.28.0
+wandb: Run data is saved locally in /lambda/nfs/Manela/chrono-instruct-replication/wandb/run-20260708_204826-7gjak1cw
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run chrono-instruct-2015-20260708-204825
+wandb: ⭐️ View project at https://wandb.ai/zhanghuanyu0619/chrono-instruct
+wandb: 🚀 View run at https://wandb.ai/zhanghuanyu0619/chrono-instruct/runs/7gjak1cw
+[data] loading cached packed blocks: cache/packed-7ad00a00d364bb4f.pt
+=== stage1_scratch: 34 train blocks, 1 val blocks ===
+[stage1_scratch] step 0/3 train 1.8843 val 1.8649 lr 3.00e-04 |g| 0.00 0 tok/s 17.9GB
+[stage1_scratch] step 1/3 train 1.9346
+[stage1_scratch] step 1/3 train 1.9346 val 1.5171 lr 2.32e-04 |g| 3.81 9,160 tok/s 44.8GB
+[stage1_scratch] step 2/3 train 1.5225
+[stage1_scratch] step 2/3 train 1.5225 val 1.2474 lr 9.75e-05 |g| 2.45 5,614 tok/s 50.4GB
+[stage1_scratch] step 3/3 train 1.3551
+[stage1_scratch] step 3/3 train 1.3551 val 1.1960 lr 3.00e-05 |g| 0.79 4,538 tok/s 50.4GB
+[stage1_scratch] step 3/3 train nan val 1.1960 lr 3.00e-05 |g| 0.79 18,457 tok/s 50.4GB
+[stage1_scratch] restored best-val weights: val 1.1960 @ step 3
+=== stage2_self_instruct: 3376 train blocks, 176 val blocks ===
+[stage2_self_instruct] step 0/210 train 2.1241 val 2.0237 lr 5.00e-05 |g| 0.00 0 tok/s 50.4GB
+[stage2_self_instruct] step 20/210 train 1.2655
+[stage2_self_instruct] step 20/210 train 1.5221 val 1.3404 lr 2.97e-04 |g| 0.21 7,697 tok/s 50.4GB
+[stage2_self_instruct] step 40/210 train 1.2937
+[stage2_self_instruct] step 40/210 train 1.2843 val 1.2478 lr 2.82e-04 |g| 0.16 6,652 tok/s 50.4GB
+[stage2_self_instruct] step 60/210 train 1.1942
+[stage2_self_instruct] step 60/210 train 1.2146 val 1.1988 lr 2.56e-04 |g| 0.16 6,761 tok/s 50.4GB
+[stage2_self_instruct] step 80/210 train 1.3453
+[stage2_self_instruct] step 80/210 train 1.2117 val 1.1717 lr 2.21e-04 |g| 0.16 6,828 tok/s 50.4GB
+[stage2_self_instruct] step 100/210 train 1.1859
+[stage2_self_instruct] step 100/210 train 1.1884 val 1.1492 lr 1.82e-04 |g| 0.15 6,710 tok/s 50.4GB
+[stage2_self_instruct] step 120/210 train 0.9519
+[stage2_self_instruct] step 120/210 train 1.0692 val 1.1430 lr 1.40e-04 |g| 0.16 6,588 tok/s 50.4GB
+[stage2_self_instruct] step 140/210 train 0.9733
+[stage2_self_instruct] step 140/210 train 1.0220 val 1.1294 lr 1.01e-04 |g| 0.14 6,878 tok/s 50.4GB
+[stage2_self_instruct] step 160/210 train 1.0752
+[stage2_self_instruct] step 160/210 train 0.9976 val 1.1208 lr 6.81e-05 |g| 0.16 6,692 tok/s 50.4GB
+[stage2_self_instruct] step 180/210 train 1.0080
+[stage2_self_instruct] step 180/210 train 0.9921 val 1.1149 lr 4.42e-05 |g| 0.14 6,750 tok/s 50.4GB
+[stage2_self_instruct] step 200/210 train 1.1153
+[stage2_self_instruct] step 200/210 train 1.0250 val 1.1107 lr 3.16e-05 |g| 0.14 6,731 tok/s 50.4GB
+[stage2_self_instruct] step 210/210 train 1.0342 val 1.1075 lr 3.00e-05 |g| 0.13 6,174 tok/s 50.4GB
+[stage2_self_instruct] restored best-val weights: val 1.1075 @ step 210
+=== stage3_tulu: 134885 train blocks, 500 val blocks ===
+[stage3_tulu] step 0/8430 train 1.8921 val 1.9093 lr 1.19e-06 |g| 0.00 0 tok/s 50.4GB
+[stage3_tulu] step 100/8430 train 1.5225
+[stage3_tulu] step 200/8430 train 1.2069
+[stage3_tulu] step 200/8430 train 1.3042 val 1.1269 lr 2.39e-04 |g| 0.13 7,280 tok/s 50.4GB
+[stage3_tulu] step 300/8430 train 1.0835
+[stage3_tulu] step 400/8430 train 1.1558
+[stage3_tulu] step 400/8430 train 1.0852 val 1.0452 lr 3.00e-04 |g| 0.14 7,119 tok/s 50.4GB
+[stage3_tulu] step 500/8430 train 1.0679
+[stage3_tulu] step 600/8430 train 0.9708
+[stage3_tulu] step 600/8430 train 1.0412 val 1.0058 lr 2.99e-04 |g| 0.12 7,094 tok/s 50.4GB
+[stage3_tulu] step 700/8430 train 0.9314
+[stage3_tulu] step 800/8430 train 0.8822
+[stage3_tulu] step 800/8430 train 1.0045 val 0.9774 lr 2.97e-04 |g| 0.10 7,130 tok/s 50.4GB
+[stage3_tulu] step 900/8430 train 0.8488
+[stage3_tulu] step 1000/8430 train 0.8226
+[stage3_tulu] step 1000/8430 train 0.9667 val 0.9584 lr 2.94e-04 |g| 0.09 7,130 tok/s 50.4GB
+[stage3_tulu] step 1100/8430 train 1.0921
+[stage3_tulu] step 1200/8430 train 0.8360
+[stage3_tulu] step 1200/8430 train 0.9522 val 0.9436 lr 2.91e-04 |g| 0.12 7,116 tok/s 50.4GB
+[stage3_tulu] step 1300/8430 train 1.1652
+[stage3_tulu] step 1400/8430 train 0.8560
+[stage3_tulu] step 1400/8430 train 0.9522 val 0.9287 lr 2.87e-04 |g| 0.08 7,108 tok/s 50.4GB
+[stage3_tulu] step 1500/8430 train 0.8606
+[stage3_tulu] step 1600/8430 train 0.8938
+[stage3_tulu] step 1600/8430 train 0.9231 val 0.9186 lr 2.82e-04 |g| 0.09 7,114 tok/s 50.4GB
+[stage3_tulu] step 1700/8430 train 1.0146
+[stage3_tulu] step 1800/8430 train 0.7079
+[stage3_tulu] step 1800/8430 train 0.9114 val 0.9085 lr 2.77e-04 |g| 0.12 7,151 tok/s 50.4GB
+[stage3_tulu] step 1900/8430 train 0.8360
+[stage3_tulu] step 2000/8430 train 1.0895
+[stage3_tulu] step 2000/8430 train 0.8973 val 0.9000 lr 2.71e-04 |g| 0.09 7,157 tok/s 50.4GB
+[stage3_tulu] step 2100/8430 train 0.8770
+[stage3_tulu] step 2200/8430 train 0.8797
+[stage3_tulu] step 2200/8430 train 0.9114 val 0.8901 lr 2.64e-04 |g| 0.09 7,119 tok/s 50.4GB
+[stage3_tulu] step 2300/8430 train 0.8272
+[stage3_tulu] step 2400/8430 train 0.7041
+[stage3_tulu] step 2400/8430 train 0.8820 val 0.8835 lr 2.57e-04 |g| 0.10 7,145 tok/s 50.4GB
+[stage3_tulu] step 2500/8430 train 1.0921
+[stage3_tulu] step 2600/8430 train 0.7430
+[stage3_tulu] step 2600/8430 train 0.8704 val 0.8754 lr 2.49e-04 |g| 0.07 7,130 tok/s 50.4GB
+[stage3_tulu] step 2700/8430 train 0.8930
+[stage3_tulu] step 2800/8430 train 0.8379
+[stage3_tulu] step 2800/8430 train 0.8773 val 0.8704 lr 2.40e-04 |g| 0.07 7,165 tok/s 50.4GB
+[stage3_tulu] step 2900/8430 train 0.6600
+[stage3_tulu] step 3000/8430 train 0.8231
+[stage3_tulu] step 3000/8430 train 0.8577 val 0.8631 lr 2.32e-04 |g| 0.09 7,149 tok/s 50.4GB
+[stage3_tulu] step 3100/8430 train 1.2649
+[stage3_tulu] step 3200/8430 train 0.8177
+[stage3_tulu] step 3200/8430 train 0.8977 val 0.8591 lr 2.22e-04 |g| 0.08 7,112 tok/s 50.4GB
+[stage3_tulu] step 3300/8430 train 0.8768
+[stage3_tulu] step 3400/8430 train 0.8383
+[stage3_tulu] step 3400/8430 train 0.8639 val 0.8532 lr 2.13e-04 |g| 0.07 7,146 tok/s 50.4GB
+[stage3_tulu] step 3500/8430 train 0.8393
+[stage3_tulu] step 3600/8430 train 0.8537
+[stage3_tulu] step 3600/8430 train 0.8484 val 0.8490 lr 2.03e-04 |g| 0.08 7,121 tok/s 50.4GB
+[stage3_tulu] step 3700/8430 train 0.6500
+[stage3_tulu] step 3800/8430 train 0.6928
+[stage3_tulu] step 3800/8430 train 0.8655 val 0.8451 lr 1.93e-04 |g| 0.09 7,155 tok/s 50.4GB
+[stage3_tulu] step 3900/8430 train 0.6869
+[stage3_tulu] step 4000/8430 train 0.7919
+[stage3_tulu] step 4000/8430 train 0.8366 val 0.8411 lr 1.83e-04 |g| 0.08 7,123 tok/s 50.4GB
+[stage3_tulu] step 4100/8430 train 0.9383
+[stage3_tulu] step 4200/8430 train 0.6317
+[stage3_tulu] step 4200/8430 train 0.8564 val 0.8369 lr 1.72e-04 |g| 0.06 7,116 tok/s 50.4GB
+[stage3_tulu] step 4300/8430 train 0.6005
+[stage3_tulu] step 4400/8430 train 0.9394
+[stage3_tulu] step 4400/8430 train 0.8176 val 0.8348 lr 1.62e-04 |g| 0.09 7,165 tok/s 50.4GB
+[stage3_tulu] step 4500/8430 train 0.6936
+[stage3_tulu] step 4600/8430 train 0.6827
+[stage3_tulu] step 4600/8430 train 0.7949 val 0.8313 lr 1.52e-04 |g| 0.08 7,114 tok/s 50.4GB
+[stage3_tulu] step 4700/8430 train 0.5992
+[stage3_tulu] step 4800/8430 train 0.6943
+[stage3_tulu] step 4800/8430 train 0.8186 val 0.8289 lr 1.41e-04 |g| 0.07 7,136 tok/s 50.4GB
+[stage3_tulu] step 4900/8430 train 0.8065
+[stage3_tulu] step 5000/8430 train 0.7885
+[stage3_tulu] step 5000/8430 train 0.7973 val 0.8265 lr 1.31e-04 |g| 0.08 7,129 tok/s 50.4GB
+[stage3_tulu] step 5100/8430 train 0.8886
+[stage3_tulu] step 5200/8430 train 0.8560
+[stage3_tulu] step 5200/8430 train 0.8363 val 0.8236 lr 1.21e-04 |g| 0.07 7,092 tok/s 50.4GB
+[stage3_tulu] step 5300/8430 train 0.7247
+[stage3_tulu] step 5400/8430 train 0.9001
+[stage3_tulu] step 5400/8430 train 0.7999 val 0.8224 lr 1.12e-04 |g| 0.07 7,335 tok/s 50.4GB
+[stage3_tulu] step 5500/8430 train 0.6302
+[stage3_tulu] step 5600/8430 train 0.7176
+[stage3_tulu] step 5600/8430 train 0.7909 val 0.8196 lr 1.02e-04 |g| 0.07 7,405 tok/s 50.4GB
+[stage3_tulu] step 5700/8430 train 0.9428
+[stage3_tulu] step 5800/8430 train 0.8038
+[stage3_tulu] step 5800/8430 train 0.8014 val 0.8182 lr 9.32e-05 |g| 0.08 7,298 tok/s 50.4GB
+[stage3_tulu] step 5900/8430 train 0.8328
+[stage3_tulu] step 6000/8430 train 0.6491
+[stage3_tulu] step 6000/8430 train 0.8028 val 0.8161 lr 8.47e-05 |g| 0.07 7,096 tok/s 50.4GB
+[stage3_tulu] step 6100/8430 train 0.7857
+[stage3_tulu] step 6200/8430 train 0.9947
+[stage3_tulu] step 6200/8430 train 0.7993 val 0.8134 lr 7.66e-05 |g| 0.07 7,056 tok/s 50.4GB
+wandb: updating run metadata
+wandb: uploading wandb-summary.json; uploading config.yaml; uploading output.log
+wandb: uploading summary
+wandb: 
+wandb: Run history:
+wandb:       stage1_scratch/train_gpu_mem_gb ▁▇███
+wandb:        stage1_scratch/train_grad_norm ▁█▅▂▂
+wandb:             stage1_scratch/train_loss ▇█▃▁ 
+wandb:               stage1_scratch/train_lr █▆▃▁▁
+wandb:   stage1_scratch/train_tokens_per_sec ▁▄▃▃█
+wandb:               stage1_scratch/val_loss █▄▂▁▁
+wandb:                stage1_scratch/val_ppl █▄▁▁▁
+wandb: stage2_self_instruct/train_gpu_mem_gb ▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  stage2_self_instruct/train_grad_norm ▁█▆▇▇▆▇▆▆▆▆▅
+wandb:       stage2_self_instruct/train_loss █▄▃▂▂▂▁▁▁▁▁▁
+wandb:                                   +11 ...
+wandb: 
+wandb: Run summary:
+wandb:                      batch_size 8
+wandb:                      block_size 1792
+wandb:                       elapsed_s 69949.9
+wandb:                      grad_accum 4
+wandb:                 grad_checkpoint True
+wandb:                      model_repo manelalab/chrono-gpt...
+wandb:                     peak_gpu_gb 50.4
+wandb:                            seed 123
+wandb: stage1_scratch/train_gpu_mem_gb 50.4
+wandb:  stage1_scratch/train_grad_norm 0.79
+wandb:                             +19 ...
+wandb: 
+wandb: 🚀 View run chrono-instruct-2015-20260708-204825 at: https://wandb.ai/zhanghuanyu0619/chrono-instruct/runs/7gjak1cw
+wandb: ⭐️ View project at: https://wandb.ai/zhanghuanyu0619/chrono-instruct
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260708_204826-7gjak1cw/logs
+[stage3_tulu] step 6300/8430 train 0.7865
+[stage3_tulu] step 6400/8430 train 0.6710
+[stage3_tulu] step 6400/8430 train 0.7805 val 0.8124 lr 6.90e-05 |g| 0.07 6,962 tok/s 50.4GB
+[stage3_tulu] step 6500/8430 train 0.5783
+[stage3_tulu] step 6600/8430 train 0.5625
+[stage3_tulu] step 6600/8430 train 0.7832 val 0.8108 lr 6.20e-05 |g| 0.07 6,950 tok/s 50.4GB
+[stage3_tulu] step 6700/8430 train 0.8801
+[stage3_tulu] step 6800/8430 train 0.9251
+[stage3_tulu] step 6800/8430 train 0.7601 val 0.8092 lr 5.56e-05 |g| 0.07 7,048 tok/s 50.4GB
+[stage3_tulu] step 6900/8430 train 0.8049
+[stage3_tulu] step 7000/8430 train 0.8755
+[stage3_tulu] step 7000/8430 train 0.7839 val 0.8080 lr 4.99e-05 |g| 0.07 7,060 tok/s 50.4GB
+[stage3_tulu] step 7100/8430 train 0.6219
+[stage3_tulu] step 7200/8430 train 0.8517
+[stage3_tulu] step 7200/8430 train 0.7805 val 0.8071 lr 4.48e-05 |g| 0.07 7,017 tok/s 50.4GB
+[stage3_tulu] step 7300/8430 train 0.6287
+[stage3_tulu] step 7400/8430 train 0.7509
+[stage3_tulu] step 7400/8430 train 0.7740 val 0.8057 lr 4.04e-05 |g| 0.06 7,004 tok/s 50.4GB
+[stage3_tulu] step 7500/8430 train 0.6692
+[stage3_tulu] step 7600/8430 train 0.8196
+[stage3_tulu] step 7600/8430 train 0.7818 val 0.8051 lr 3.68e-05 |g| 0.06 7,003 tok/s 50.4GB
+[stage3_tulu] step 7700/8430 train 1.2258
+[stage3_tulu] step 7800/8430 train 0.7062
+[stage3_tulu] step 7800/8430 train 0.8004 val 0.8042 lr 3.39e-05 |g| 0.07 7,050 tok/s 50.4GB
+[stage3_tulu] step 7900/8430 train 0.6378
+[stage3_tulu] step 8000/8430 train 0.9749
+[stage3_tulu] step 8000/8430 train 0.7800 val 0.8038 lr 3.18e-05 |g| 0.08 7,028 tok/s 50.4GB
+[stage3_tulu] step 8100/8430 train 0.7469
+[stage3_tulu] step 8200/8430 train 0.7176
+[stage3_tulu] step 8200/8430 train 0.7846 val 0.8033 lr 3.05e-05 |g| 0.06 6,992 tok/s 50.4GB
+[stage3_tulu] step 8300/8430 train 0.5883
+[stage3_tulu] step 8400/8430 train 0.9810
+[stage3_tulu] step 8400/8430 train 0.7867 val 0.8027 lr 3.00e-05 |g| 0.06 7,036 tok/s 50.4GB
+[stage3_tulu] step 8430/8430 train 0.7712 val 0.8026 lr 3.00e-05 |g| 0.08 6,337 tok/s 50.4GB
+[stage3_tulu] restored best-val weights: val 0.8026 @ step 8430
+wrote results/chrono-instruct-2015/figure1.png
+[results] saved run artifacts -> results/chrono-instruct-2015/ (commit + push with scripts/publish_results.sh or `git add results/chrono-instruct-2015`)
+Pushed /home/ubuntu/persist/runs/chrono-instruct-2015/final -> https://huggingface.co/HZ0619/chrono-instruct-v1-20151231
+[main 648f00d] results: chrono-instruct-2015 (loss curves + metrics + summary)
+ 4 files changed, 192 insertions(+)
+ create mode 100644 results/chrono-instruct-2015/config.yaml
+ create mode 100644 results/chrono-instruct-2015/figure1.png
+ create mode 100644 results/chrono-instruct-2015/metrics.csv
+ create mode 100644 results/chrono-instruct-2015/summary.json
+To https://github.com/zhanghuanyu0619/chrono-instruct-replication.git
+   9035b73..648f00d  main -> main
+published results/chrono-instruct-2015 -> GitHub
+==================  chrono-instruct-2024  (base manelalab/chrono-gpt-v1-20241231)  ==================
+wrote configs/_vintage_2024.yaml  (model_repo=manelalab/chrono-gpt-v1-20241231, output_dir=/home/ubuntu/persist/runs/chrono-instruct-2024, repo_id=HZ0619/chrono-instruct-v1-20241231)
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/ubuntu/.netrc.
+wandb: Currently logged in as: zhanghuanyu0619 to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run z043z36x
+wandb: Tracking run with wandb version 0.28.0
+wandb: Run data is saved locally in /lambda/nfs/Manela/chrono-instruct-replication/wandb/run-20260709_161614-z043z36x
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run chrono-instruct-2024-20260709-161614
+wandb: ⭐️ View project at https://wandb.ai/zhanghuanyu0619/chrono-instruct
+wandb: 🚀 View run at https://wandb.ai/zhanghuanyu0619/chrono-instruct/runs/z043z36x
+[data] loading cached packed blocks: cache/packed-7ad00a00d364bb4f.pt
+=== stage1_scratch: 34 train blocks, 1 val blocks ===
+[stage1_scratch] step 0/3 train 1.7175 val 1.7012 lr 3.00e-04 |g| 0.00 0 tok/s 17.9GB
+[stage1_scratch] step 1/3 train 1.7683
+[stage1_scratch] step 1/3 train 1.7683 val 1.3797 lr 2.32e-04 |g| 3.43 9,120 tok/s 44.8GB
+[stage1_scratch] step 2/3 train 1.4017
+[stage1_scratch] step 2/3 train 1.4017 val 1.1789 lr 9.75e-05 |g| 2.17 5,599 tok/s 50.4GB
+[stage1_scratch] step 3/3 train 1.2570
+[stage1_scratch] step 3/3 train 1.2570 val 1.1370 lr 3.00e-05 |g| 0.77 4,461 tok/s 50.4GB
+[stage1_scratch] step 3/3 train nan val 1.1370 lr 3.00e-05 |g| 0.77 18,557 tok/s 50.4GB
+[stage1_scratch] restored best-val weights: val 1.1370 @ step 3
+=== stage2_self_instruct: 3376 train blocks, 176 val blocks ===
+[stage2_self_instruct] step 0/210 train 1.9507 val 1.8714 lr 5.00e-05 |g| 0.00 0 tok/s 50.4GB
+[stage2_self_instruct] step 20/210 train 1.2112
+[stage2_self_instruct] step 20/210 train 1.4363 val 1.2664 lr 2.97e-04 |g| 0.18 7,526 tok/s 50.4GB
+[stage2_self_instruct] step 40/210 train 1.2353
+[stage2_self_instruct] step 40/210 train 1.2192 val 1.1823 lr 2.82e-04 |g| 0.17 6,547 tok/s 50.4GB
+[stage2_self_instruct] step 60/210 train 1.1271
+[stage2_self_instruct] step 60/210 train 1.1511 val 1.1401 lr 2.56e-04 |g| 0.14 6,579 tok/s 50.4GB
+[stage2_self_instruct] step 80/210 train 1.2865
+[stage2_self_instruct] step 80/210 train 1.1543 val 1.1183 lr 2.21e-04 |g| 0.17 6,680 tok/s 50.4GB
+[stage2_self_instruct] step 100/210 train 1.1236
+[stage2_self_instruct] step 100/210 train 1.1318 val 1.0960 lr 1.82e-04 |g| 0.15 6,598 tok/s 50.4GB
+[stage2_self_instruct] step 120/210 train 0.9045
+[stage2_self_instruct] step 120/210 train 1.0104 val 1.0899 lr 1.40e-04 |g| 0.15 6,416 tok/s 50.4GB
+[stage2_self_instruct] step 140/210 train 0.9260
+[stage2_self_instruct] step 140/210 train 0.9633 val 1.0804 lr 1.01e-04 |g| 0.15 6,725 tok/s 50.4GB
+[stage2_self_instruct] step 160/210 train 1.0002
+[stage2_self_instruct] step 160/210 train 0.9410 val 1.0674 lr 6.81e-05 |g| 0.14 6,590 tok/s 50.4GB
+[stage2_self_instruct] step 180/210 train 0.9489
+[stage2_self_instruct] step 180/210 train 0.9366 val 1.0647 lr 4.42e-05 |g| 0.14 6,601 tok/s 50.4GB
+[stage2_self_instruct] step 200/210 train 1.0617
+[stage2_self_instruct] step 200/210 train 0.9655 val 1.0595 lr 3.16e-05 |g| 0.14 6,605 tok/s 50.4GB
+[stage2_self_instruct] step 210/210 train 0.9780 val 1.0573 lr 3.00e-05 |g| 0.13 6,075 tok/s 50.4GB
+[stage2_self_instruct] restored best-val weights: val 1.0573 @ step 210
+=== stage3_tulu: 134885 train blocks, 500 val blocks ===
+[stage3_tulu] step 0/8430 train 1.8452 val 1.8699 lr 1.19e-06 |g| 0.00 0 tok/s 50.4GB
+[stage3_tulu] step 100/8430 train 1.4539
+[stage3_tulu] step 200/8430 train 1.1660
+[stage3_tulu] step 200/8430 train 1.2667 val 1.0979 lr 2.39e-04 |g| 0.16 7,129 tok/s 50.4GB
+[stage3_tulu] step 300/8430 train 1.0615
+[stage3_tulu] step 400/8430 train 1.1230
+[stage3_tulu] step 400/8430 train 1.0550 val 1.0171 lr 3.00e-04 |g| 0.14 7,033 tok/s 50.4GB
+[stage3_tulu] step 500/8430 train 1.0406
+[stage3_tulu] step 600/8430 train 0.9413
+[stage3_tulu] step 600/8430 train 1.0127 val 0.9781 lr 2.99e-04 |g| 0.11 6,986 tok/s 50.4GB
+[stage3_tulu] step 700/8430 train 0.9166
+[stage3_tulu] step 800/8430 train 0.8503
+[stage3_tulu] step 800/8430 train 0.9791 val 0.9510 lr 2.97e-04 |g| 0.09 7,004 tok/s 50.4GB
+[stage3_tulu] step 900/8430 train 0.8313
+[stage3_tulu] step 1000/8430 train 0.8060
+[stage3_tulu] step 1000/8430 train 0.9437 val 0.9357 lr 2.94e-04 |g| 0.11 7,012 tok/s 50.4GB
+[stage3_tulu] step 1100/8430 train 1.0590
+[stage3_tulu] step 1200/8430 train 0.8170
+[stage3_tulu] step 1200/8430 train 0.9282 val 0.9187 lr 2.91e-04 |g| 0.12 7,016 tok/s 50.4GB
+[stage3_tulu] step 1300/8430 train 1.1511
+[stage3_tulu] step 1400/8430 train 0.8256
+[stage3_tulu] step 1400/8430 train 0.9296 val 0.9060 lr 2.87e-04 |g| 0.08 6,978 tok/s 50.4GB
+[stage3_tulu] step 1500/8430 train 0.8429
+[stage3_tulu] step 1600/8430 train 0.8755
+[stage3_tulu] step 1600/8430 train 0.9021 val 0.9015 lr 2.82e-04 |g| 0.10 6,941 tok/s 50.4GB
+[stage3_tulu] step 1700/8430 train 0.9855
+[stage3_tulu] step 1800/8430 train 0.6893
+[stage3_tulu] step 1800/8430 train 0.8904 val 0.8872 lr 2.77e-04 |g| 0.08 7,002 tok/s 50.4GB
+[stage3_tulu] step 1900/8430 train 0.8175
+[stage3_tulu] step 2000/8430 train 1.0616
+[stage3_tulu] step 2000/8430 train 0.8758 val 0.8775 lr 2.71e-04 |g| 0.07 7,108 tok/s 50.4GB
+[stage3_tulu] step 2100/8430 train 0.8566
+[stage3_tulu] step 2200/8430 train 0.8537
+[stage3_tulu] step 2200/8430 train 0.8892 val 0.8695 lr 2.64e-04 |g| 0.08 7,054 tok/s 50.4GB
+[stage3_tulu] step 2300/8430 train 0.8037
+[stage3_tulu] step 2400/8430 train 0.6929
+[stage3_tulu] step 2400/8430 train 0.8608 val 0.8622 lr 2.57e-04 |g| 0.09 7,081 tok/s 50.4GB
+[stage3_tulu] step 2500/8430 train 1.0688
+[stage3_tulu] step 2600/8430 train 0.7315
+[stage3_tulu] step 2600/8430 train 0.8500 val 0.8558 lr 2.49e-04 |g| 0.07 7,065 tok/s 50.4GB
+[stage3_tulu] step 2700/8430 train 0.8739
+[stage3_tulu] step 2800/8430 train 0.8241
+[stage3_tulu] step 2800/8430 train 0.8571 val 0.8503 lr 2.40e-04 |g| 0.08 7,097 tok/s 50.4GB
+[stage3_tulu] step 2900/8430 train 0.6535
+[stage3_tulu] step 3000/8430 train 0.8029
+[stage3_tulu] step 3000/8430 train 0.8376 val 0.8444 lr 2.32e-04 |g| 0.11 7,084 tok/s 50.4GB
+[stage3_tulu] step 3100/8430 train 1.2444
+[stage3_tulu] step 3200/8430 train 0.8009
+[stage3_tulu] step 3200/8430 train 0.8777 val 0.8402 lr 2.22e-04 |g| 0.10 7,042 tok/s 50.4GB
+[stage3_tulu] step 3300/8430 train 0.8578
+[stage3_tulu] step 3400/8430 train 0.8214
+[stage3_tulu] step 3400/8430 train 0.8444 val 0.8346 lr 2.13e-04 |g| 0.08 7,060 tok/s 50.4GB
+[stage3_tulu] step 3500/8430 train 0.8112
+[stage3_tulu] step 3600/8430 train 0.8334
+[stage3_tulu] step 3600/8430 train 0.8289 val 0.8302 lr 2.03e-04 |g| 0.08 7,039 tok/s 50.4GB
+[stage3_tulu] step 3700/8430 train 0.6366
+[stage3_tulu] step 3800/8430 train 0.6798
+[stage3_tulu] step 3800/8430 train 0.8464 val 0.8269 lr 1.93e-04 |g| 0.08 7,074 tok/s 50.4GB
+[stage3_tulu] step 3900/8430 train 0.6776
+[stage3_tulu] step 4000/8430 train 0.7713
+[stage3_tulu] step 4000/8430 train 0.8184 val 0.8227 lr 1.83e-04 |g| 0.09 7,062 tok/s 50.4GB
+[stage3_tulu] step 4100/8430 train 0.8994
+[stage3_tulu] step 4200/8430 train 0.6208
+[stage3_tulu] step 4200/8430 train 0.8369 val 0.8186 lr 1.72e-04 |g| 0.07 7,023 tok/s 50.4GB
+[stage3_tulu] step 4300/8430 train 0.5922
+[stage3_tulu] step 4400/8430 train 0.9118
+[stage3_tulu] step 4400/8430 train 0.7970 val 0.8163 lr 1.62e-04 |g| 0.07 7,041 tok/s 50.4GB
+[stage3_tulu] step 4500/8430 train 0.6829
+[stage3_tulu] step 4600/8430 train 0.6713
+[stage3_tulu] step 4600/8430 train 0.7752 val 0.8145 lr 1.52e-04 |g| 0.08 7,038 tok/s 50.4GB
+[stage3_tulu] step 4700/8430 train 0.5950
+[stage3_tulu] step 4800/8430 train 0.6785
+[stage3_tulu] step 4800/8430 train 0.7985 val 0.8115 lr 1.41e-04 |g| 0.08 7,091 tok/s 50.4GB
+[stage3_tulu] step 4900/8430 train 0.7901
+[stage3_tulu] step 5000/8430 train 0.7712
+[stage3_tulu] step 5000/8430 train 0.7783 val 0.8089 lr 1.31e-04 |g| 0.07 7,106 tok/s 50.4GB
+[stage3_tulu] step 5100/8430 train 0.8682
+[stage3_tulu] step 5200/8430 train 0.8315
+[stage3_tulu] step 5200/8430 train 0.8148 val 0.8062 lr 1.21e-04 |g| 0.07 7,066 tok/s 50.4GB
+[stage3_tulu] step 5300/8430 train 0.7080
+[stage3_tulu] step 5400/8430 train 0.8683
+[stage3_tulu] step 5400/8430 train 0.7806 val 0.8046 lr 1.12e-04 |g| 0.07 7,129 tok/s 50.4GB
+[stage3_tulu] step 5500/8430 train 0.6150
+[stage3_tulu] step 5600/8430 train 0.7021
+[stage3_tulu] step 5600/8430 train 0.7716 val 0.8020 lr 1.02e-04 |g| 0.06 7,057 tok/s 50.4GB
+[stage3_tulu] step 5700/8430 train 0.9176
+[stage3_tulu] step 5800/8430 train 0.7848
+[stage3_tulu] step 5800/8430 train 0.7822 val 0.8008 lr 9.32e-05 |g| 0.07 7,118 tok/s 50.4GB
+[stage3_tulu] step 5900/8430 train 0.8178
+[stage3_tulu] step 6000/8430 train 0.6339
+[stage3_tulu] step 6000/8430 train 0.7829 val 0.7986 lr 8.47e-05 |g| 0.07 7,071 tok/s 50.4GB
+[stage3_tulu] step 6100/8430 train 0.7603
+[stage3_tulu] step 6200/8430 train 0.9771
+[stage3_tulu] step 6200/8430 train 0.7802 val 0.7963 lr 7.66e-05 |g| 0.07 7,041 tok/s 50.4GB
+wandb: updating run metadata
+wandb: uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading summary, console lines 164-164
+wandb: 
+wandb: Run history:
+wandb:       stage1_scratch/train_gpu_mem_gb ▁▇███
+wandb:        stage1_scratch/train_grad_norm ▁█▅▃▃
+wandb:             stage1_scratch/train_loss ▇█▃▁ 
+wandb:               stage1_scratch/train_lr █▆▃▁▁
+wandb:   stage1_scratch/train_tokens_per_sec ▁▄▃▃█
+wandb:               stage1_scratch/val_loss █▄▂▁▁
+wandb:                stage1_scratch/val_ppl █▄▁▁▁
+wandb: stage2_self_instruct/train_gpu_mem_gb ▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  stage2_self_instruct/train_grad_norm ▁█▇▆█▇▇▇▆▆▆▆
+wandb:       stage2_self_instruct/train_loss █▄▃▂▃▂▂▁▁▁▁▁
+wandb:                                   +11 ...
+wandb: 
+wandb: Run summary:
+wandb:                      batch_size 8
+wandb:                      block_size 1792
+wandb:                       elapsed_s 70486
+wandb:                      grad_accum 4
+wandb:                 grad_checkpoint True
+wandb:                      model_repo manelalab/chrono-gpt...
+wandb:                     peak_gpu_gb 50.4
+wandb:                            seed 123
+wandb: stage1_scratch/train_gpu_mem_gb 50.4
+wandb:  stage1_scratch/train_grad_norm 0.768
+wandb:                             +19 ...
+wandb: 
+wandb: 🚀 View run chrono-instruct-2024-20260709-161614 at: https://wandb.ai/zhanghuanyu0619/chrono-instruct/runs/z043z36x
+wandb: ⭐️ View project at: https://wandb.ai/zhanghuanyu0619/chrono-instruct
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260709_161614-z043z36x/logs
+[stage3_tulu] step 6300/8430 train 0.7668
+[stage3_tulu] step 6400/8430 train 0.6607
+[stage3_tulu] step 6400/8430 train 0.7615 val 0.7952 lr 6.90e-05 |g| 0.06 7,073 tok/s 50.4GB
+[stage3_tulu] step 6500/8430 train 0.5662
+[stage3_tulu] step 6600/8430 train 0.5545
+[stage3_tulu] step 6600/8430 train 0.7644 val 0.7936 lr 6.20e-05 |g| 0.07 7,068 tok/s 50.4GB
+[stage3_tulu] step 6700/8430 train 0.8627
+[stage3_tulu] step 6800/8430 train 0.9069
+[stage3_tulu] step 6800/8430 train 0.7424 val 0.7921 lr 5.56e-05 |g| 0.07 7,083 tok/s 50.4GB
+[stage3_tulu] step 6900/8430 train 0.7835
+[stage3_tulu] step 7000/8430 train 0.8625
+[stage3_tulu] step 7000/8430 train 0.7648 val 0.7908 lr 4.99e-05 |g| 0.07 7,100 tok/s 50.4GB
+[stage3_tulu] step 7100/8430 train 0.6139
+[stage3_tulu] step 7200/8430 train 0.8418
+[stage3_tulu] step 7200/8430 train 0.7614 val 0.7899 lr 4.48e-05 |g| 0.07 7,078 tok/s 50.4GB
+[stage3_tulu] step 7300/8430 train 0.6152
+[stage3_tulu] step 7400/8430 train 0.7352
+[stage3_tulu] step 7400/8430 train 0.7559 val 0.7885 lr 4.04e-05 |g| 0.06 7,095 tok/s 50.4GB
+[stage3_tulu] step 7500/8430 train 0.6550
+[stage3_tulu] step 7600/8430 train 0.8009
+[stage3_tulu] step 7600/8430 train 0.7626 val 0.7881 lr 3.68e-05 |g| 0.06 7,084 tok/s 50.4GB
+[stage3_tulu] step 7700/8430 train 1.1989
+[stage3_tulu] step 7800/8430 train 0.6939
+[stage3_tulu] step 7800/8430 train 0.7803 val 0.7871 lr 3.39e-05 |g| 0.07 7,116 tok/s 50.4GB
+[stage3_tulu] step 7900/8430 train 0.6268
+[stage3_tulu] step 8000/8430 train 0.9320
+[stage3_tulu] step 8000/8430 train 0.7613 val 0.7867 lr 3.18e-05 |g| 0.08 7,087 tok/s 50.4GB
+[stage3_tulu] step 8100/8430 train 0.7299
+[stage3_tulu] step 8200/8430 train 0.6994
+[stage3_tulu] step 8200/8430 train 0.7650 val 0.7863 lr 3.05e-05 |g| 0.06 7,072 tok/s 50.4GB
+[stage3_tulu] step 8300/8430 train 0.5794
+[stage3_tulu] step 8400/8430 train 0.9567
+[stage3_tulu] step 8400/8430 train 0.7676 val 0.7856 lr 3.00e-05 |g| 0.06 7,089 tok/s 50.4GB
+[stage3_tulu] step 8430/8430 train 0.7504 val 0.7855 lr 3.00e-05 |g| 0.08 6,389 tok/s 50.4GB
+[stage3_tulu] restored best-val weights: val 0.7855 @ step 8430
+wrote results/chrono-instruct-2024/figure1.png
+[results] saved run artifacts -> results/chrono-instruct-2024/ (commit + push with scripts/publish_results.sh or `git add results/chrono-instruct-2024`)
+Pushed /home/ubuntu/persist/runs/chrono-instruct-2024/final -> https://huggingface.co/HZ0619/chrono-instruct-v1-20241231
+[main a391ed5] results: chrono-instruct-2024 (loss curves + metrics + summary)
+ 4 files changed, 192 insertions(+)
+ create mode 100644 results/chrono-instruct-2024/config.yaml
+ create mode 100644 results/chrono-instruct-2024/figure1.png
+ create mode 100644 results/chrono-instruct-2024/metrics.csv
+ create mode 100644 results/chrono-instruct-2024/summary.json
+To https://github.com/zhanghuanyu0619/chrono-instruct-replication.git
+   648f00d..a391ed5  main -> main
+published results/chrono-instruct-2024 -> GitHub
+==================  sweep done  ==================
+  trained: 1999 2005 2010 2015 2024
+  failed:  none

@@ -1,0 +1,90 @@
+# One vintage, one run. Change `model_repo` (and output_dir) to sweep vintages.
+# Stage `sources` are matched as case-insensitive substrings against the dataset's
+# `source` column — run `chrono inspect` first to see the exact values and counts.
+#
+# Temporal screen (paper s2.2.1): keep only pairs the GPT-4.1 classifier labels
+# 0 ("pre-2000") with confidence 10. This is a SINGLE conservative screen, not
+# per-vintage: pre-2000 data is pre-tau for every vintage tau >= 1999, so the
+# filtered+packed corpus is built once (cache_dir) and reused across all vintages.
+# The screen drops the release from 647,944 rows to the paper's ~425,119.
+model_repo: manelalab/chrono-gpt-v1-20201231
+dataset: manelalab/ChronoInstruct-SFT
+output_dir: runs/chrono-instruct-2020
+cache_dir: cache            # packed blocks cached here; shared across vintage runs
+min_confidence: 10          # confidence gate for label-0 retention (set null to skip)
+
+block_size: 1792
+seed: 123                    # single global seed: train/val split, shuffle, and sampling all derive from it
+
+batch_size: 8
+grad_accum: 4
+grad_checkpoint: true        # recompute blocks in backward: ~10x less activation memory, ~20% slower.
+                             # Lets batch_size 8 fit one 80GB card. Set false only if memory is ample.
+# NOTE: warmup_ratio and min_lr_ratio are DIMENSIONLESS FRACTIONS, not learning
+# rates -- do not compare them to `lr` below.
+warmup_ratio: 0.03           # fraction of a stage's TOTAL STEPS spent warming up:
+                             # warmup_steps = int(total_steps * 0.03). Rounds to ~0 on short stages
+                             # (stage1 ~40 steps -> 1 step). Bump toward 0.1 for a visible ramp.
+weight_decay: 0.0
+grad_clip: 1.0               # clip grad-norm to this (standard SFT value); null = off (norm still logged)
+min_lr_ratio: 0.1            # fraction of THIS STAGE's lr used as the cosine floor: min_lr = 0.1 * lr
+                             # (so lr 3e-4 floors at 3e-5). Matches torch CosineAnnealingLR's eta_min.
+                             # 0.0 = classic decay-to-zero.
+early_stop_patience: 3       # stop a stage after this many consecutive evals with no val improvement,
+                             # then restore + save the BEST-val weights and continue the next stage from
+                             # them. null/0 = off (train full epochs, keep last-step weights). Needs a
+                             # small enough per-stage eval_every to eval several times before overfitting.
+min_delta: null              # an eval counts as improvement only if val drops by > min_delta (Keras
+                             # semantics); null/0 = any improvement counts. Set e.g. 0.01 once you know
+                             # your val noise floor, so a jumpy 1-block val set can't defer stopping.
+val_fraction: 0.05
+log_every: 20                # train metrics (loss, lr, grad_norm, tok/s, VRAM) logged every N steps
+eval_every: 200              # periodic in-stage validation -> a real val curve (like the paper's Fig 1)
+                             # BOTH are GLOBAL DEFAULTS; a stage can override them (see `stages` below).
+                             # Units are OPTIMIZER STEPS, not epochs: if eval_every > a stage's total
+                             # steps it never fires and you get only the step-0 + final points. Tiny
+                             # stages (stage1 is ~6 steps) therefore need a per-stage eval_every ~1.
+val_max_blocks: 500          # cap the random held-out set so EACH eval covers the whole val set cheaply
+save_every: 500
+
+# Integrations. Loss curves always go to output_dir/metrics.csv (the source for
+# Figures 1-2) regardless of W&B.
+wandb:
+  enabled: true             # live mirror of the CSV. Requires `wandb login` on the box;
+                            # if not logged in the run FALLS BACK to CSV-only (never crashes).
+  project: chrono-instruct
+  name: null                # defaults to the output_dir basename
+push_to_hub:
+  enabled: true             # push output_dir/final to the Hub when a COMPLETE run finishes.
+                            # A partial/smoke run (didn't reach final_stage) is SKIPPED, so tuning
+                            # runs don't upload 7.4GB each. Needs a WRITE token (hf auth login).
+  repo_id: HZ0619/chrono-instruct-v1-20201231   # must be your HF namespace (hf auth whoami), NOT GitHub
+  final_stage: stage3_tulu  # only a run ENDING on this stage pushes; set to your last stage to push a short run
+  private: true
+
+# Curriculum, trained in order; each stage continues from the previous weights.
+# LR / epochs are an initial guess to be tuned against the paper's Figure 1 curves.
+# Optional per-stage `eval_every` / `log_every` override the globals above so each
+# stage yields ~30-70 plot points regardless of its (very different) step count.
+stages:
+  - name: stage1_scratch
+    sources: ["scratch"]
+    epochs: 3
+    lr: 3.0e-4         # empirically tuned: reaches val ~1.2 (near the paper) in a few steps.
+                       # HIGH vs a normal SFT lr because the stage is tiny (~40 steps) and needs
+                       # big steps to move; early stopping catches the fast overfit (val bottoms ~step 14).
+    eval_every: 1      # ~40 total steps -> log every one, else the curve is 2 dots
+    log_every: 1
+  - name: stage2_self_instruct
+    sources: ["self-instruct", "self-generated", "gpt-3"]
+    epochs: 2          # SFT standard is 1-3 epochs; Tulu-3 used 2. Watch the val curve.
+    lr: 3.0e-4         # UNTUNED guess. Large stage (~700 steps) -> a standard SFT lr, NOT stage1's 3e-4
+                       # (3e-4 over hundreds of steps on a 1.5B model risks instability). Tune vs Fig 1.
+    eval_every: 20     # ~700 steps (paper's Fig 1 Stage 2) -> ~35 points
+    log_every: 20
+  - name: stage3_tulu
+    sources: ["tulu"]
+    epochs: 2          # ~2x our 1-epoch step count, closer to the paper's Fig 1 (~14k steps)
+    lr: 3.0e-4         # UNTUNED guess; ~14k steps -> conservative lr. Tune vs Fig 1.
+    eval_every: 200    # ~14k steps -> ~70 points; eval_every 1 here would be ruinous
+    log_every: 100
