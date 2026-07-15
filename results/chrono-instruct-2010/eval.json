@@ -109,6 +109,8 @@
   "figure3_alpacaeval": {
     "outputs": "results/chrono-instruct-2010/alpaca_2010.json",
     "n": 805,
-    "winrate_error": "Error code: 404 - {'error': {'message': 'The model `gpt-4-1106-preview` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}"
+    "annotator": "weighted_alpaca_eval_gpt4_turbo_new",
+    "lc_winrate": 10.14,
+    "winrate": 7.67
   }
 }
