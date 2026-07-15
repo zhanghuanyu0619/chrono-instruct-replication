@@ -32,3 +32,6 @@ docs/walkthrough/
 
 # alpaca_eval per-prompt annotation dumps (large; the win-rate is already in eval.json)
 results/**/annotations.json
+
+# author-facing summary draft (local only, not synced)
+results/replication-report/executive-summary.md
