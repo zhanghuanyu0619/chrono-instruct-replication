@@ -26,12 +26,12 @@ chrono alpaca --backend chrono --repo /home/ubuntu/persist/runs/chrono-instruct-
 
 **2. Generate the reference outputs** (Qwen — once, reused for every vintage):
 ```bash
-chrono alpaca --backend hf --repo Qwen/Qwen1.5-1.8B-Chat --name qwen --out out/qwen.json
+chrono alpaca --backend hf --repo Qwen/Qwen1.5-1.8B-Chat --name qwen --out results/qwen/qwen.json
 ```
 
 **3. Score the LC win-rate** of model vs reference:
 ```bash
-chrono winrate --model out/chrono-2020.json --reference out/qwen.json
+chrono winrate --model out/chrono-2020.json --reference results/qwen/qwen.json
 ```
 Both models decode **greedily** (matching the authors' released
 `ChronoGPT_instruct.py`: temperature 0, argmax), so the win-rate reflects model

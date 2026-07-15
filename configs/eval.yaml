@@ -5,8 +5,8 @@
 #   1. chrono alpaca --backend chrono --repo runs/chrono-instruct-2020/final \
 #        --name chrono-2020 --out out/chrono-2020.json
 #   2. chrono alpaca --backend hf --repo Qwen/Qwen1.5-1.8B-Chat \
-#        --name qwen --out out/qwen.json                 # the reference, generated once
-#   3. chrono winrate --model out/chrono-2020.json --reference out/qwen.json
+#        --name qwen --out results/qwen/qwen.json                 # the reference, generated once
+#   3. chrono winrate --model out/chrono-2020.json --reference results/qwen/qwen.json
 #   then collect {year: winrate} into a JSON and: chrono figure --kind 3 --results ...
 #
 # Step 3 calls the canonical `alpaca_eval` package, whose judge needs an

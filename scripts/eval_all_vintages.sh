@@ -18,7 +18,7 @@ set -euo pipefail
 HF_USER="${HF_USER:-HZ0619}"
 ALPACA="${ALPACA:-0}"                 # set ALPACA=1 to also run Figure 3 (AlpacaEval)
 REPO_DIR="${REPO_DIR:-}"              # if set, eval <REPO_DIR>/chrono-instruct-<Y>/final instead of HF
-REF="${REF:-out/qwen.json}"          # AlpacaEval reference (Qwen), generated once
+REF="${REF:-results/qwen/qwen.json}" # AlpacaEval reference (Qwen), generated once (tracked)
 YEARS=("$@")
 [ ${#YEARS[@]} -eq 0 ] && YEARS=(1999 2005 2010 2015 2020 2024)
 
@@ -46,6 +46,8 @@ done
 # Collect everything the report needs, then publish to GitHub (best-effort).
 python scripts/aggregate_eval.py || echo "WARN: aggregate_eval failed (continuing)"
 git add "results/chrono-instruct-"*/eval.json \
+        "results/chrono-instruct-"*/alpaca_*.json \
+        results/qwen/qwen.json \
         results/replication-report/eval_results.json \
         results/replication-report/eval_summary.md 2>/dev/null \
     && git commit -q -m "results: evaluation sweep (Tables 2-3$([ "$ALPACA" = "1" ] && echo ', Figure 3'))" 2>/dev/null \

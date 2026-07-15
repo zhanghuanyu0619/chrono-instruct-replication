@@ -12,10 +12,10 @@ Needs (wherever an OpenAI-family judge key lives — e.g. the training box, not 
   pip install -e '.[eval]'            # alpaca_eval + openai
   export OPENAI_API_KEY=...           # the judge key
   # a reference outputs JSON (Qwen-1.5-1.8B-Chat), as produced by the sweep:
-  #   chrono alpaca --backend hf --repo Qwen/Qwen1.5-1.8B-Chat --name qwen --out out/qwen.json
+  #   chrono alpaca --backend hf --repo Qwen/Qwen1.5-1.8B-Chat --name qwen --out results/qwen/qwen.json
 
 Examples:
-  python scripts/score_alpaca.py                                  # 2015 vs out/qwen.json, default judge
+  python scripts/score_alpaca.py                                  # 2015 vs results/qwen/qwen.json, default judge
   python scripts/score_alpaca.py --model results/chrono-instruct-2020/alpaca_2020.json
   python scripts/score_alpaca.py --annotator weighted_alpaca_eval_gpt4_turbo_new   # stronger judge
   ALPACA_ANNOTATOR=... python scripts/score_alpaca.py            # env override also honored
@@ -35,7 +35,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="results/chrono-instruct-2015/alpaca_2015.json",
                     help="already-generated model outputs JSON to score")
-    ap.add_argument("--reference", default="out/qwen.json",
+    ap.add_argument("--reference", default="results/qwen/qwen.json",
                     help="reference outputs JSON (Qwen-1.5-1.8B-Chat), as the sweep generates")
     ap.add_argument("--annotator", default=None,
                     help=f"alpaca_eval annotators_config (default: $ALPACA_ANNOTATOR or {DEFAULT_ALPACA_ANNOTATOR})")
@@ -49,7 +49,7 @@ def main():
     if not os.path.exists(args.reference):
         sys.exit(f"reference outputs not found: {args.reference}\n"
                  "  generate once: chrono alpaca --backend hf --repo Qwen/Qwen1.5-1.8B-Chat "
-                 "--name qwen --out out/qwen.json")
+                 "--name qwen --out results/qwen/qwen.json")
     if not (os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")):
         print("WARN: no OPENAI_API_KEY in env — alpaca_eval's judge will fail to authenticate.",
               file=sys.stderr)

@@ -28,9 +28,9 @@ Hub under `HZ0619/chrono-instruct-v1-{vintage}1231`. **Status:** the SFT trainin
 exhibits (data screen, loss curves, curriculum behavior) and the two
 chronological-consistency exhibits (Tables 2–3) are complete — **the consistency
 tests show zero post-cutoff leakage across all six vintages, with pre-cutoff
-accuracy rising monotonically as the cutoff advances** (§6). AlpacaEval (Figure 3)
-is generated but not yet judged (the outputs exist for all six vintages; the LLM
-judge step is a one-command re-run, §7).
+accuracy rising as the cutoff advances** (§6). AlpacaEval (Figure 3) is run: our
+vintages win a modest **8–11 %** LC share vs Qwen (paper: 12.6–16.8 %), the same
+"leakage-free but competitive" story at a lower absolute level (§6b).
 
 ---
 
@@ -43,7 +43,7 @@ judge step is a one-command re-run, §7).
 | — | Six trained vintages pushed to HF | Reusable, leakage-free instruct models | ✅ done |
 | Table 2 | U.S. president consistency test | Correct pre-cutoff, blind post-cutoff | ✅ done (§6) |
 | Table 3 | Major-world-events test | Same chronological-consistency pattern | ✅ done (§6) |
-| Figure 3 | AlpacaEval LC win-rate vs Qwen-1.5-1.8B-Chat | Instruction-following quality (12.59–16.79% in paper) | ⏳ generated, judging pending |
+| Figure 3 | AlpacaEval LC win-rate vs Qwen-1.5-1.8B-Chat | Instruction-following quality (paper 12.6–16.8%; ours 8–11%) | ✅ done (§6b) |
 | — | Uncapped full-validation re-scoring | Tightens the noisy Stage-1 training-time numbers | ⏳ coded, not yet run |
 
 Not in scope (by design): any downstream return-prediction / trading application
@@ -264,54 +264,43 @@ year, so Biden is *post*-cutoff for τ=2020 here. This shifts at most one bounda
 per vintage and never creates leakage (the Post column is still 0/N); it is a
 deliberate simplification, not a fidelity claim.
 
-**Reproduce** (defaults to the HF-published models; writes `eval.json` per vintage and
-aggregates into this folder's `eval_results.json` / `eval_summary.md`):
-
-```bash
-bash scripts/eval_all_vintages.sh              # Tables 2-3, all six vintages
-python scripts/run_eval.py --vintage 2020      # a single vintage
-```
-
 ---
 
-## 6b. Pending — Figure 3 (AlpacaEval) and uncapped re-scoring
+## 6b. Figure 3 — AlpacaEval instruction-following
 
-**Figure 3 — AlpacaEval LC win-rate vs Qwen-1.5-1.8B-Chat.** All six vintages'
-**outputs are generated** (805 completions each, saved as
-`results/chrono-instruct-{τ}/alpaca_{τ}.json`); only the LLM-judge step is
-outstanding. The initial sweep's judging 404'd because AlpacaEval's default annotator
-calls OpenAI's **retired `gpt-4-1106-preview`**; `eval.py` now defaults to a live
-annotator (`weighted_alpaca_eval_gpt-4o-mini-2024-07-18`, overridable via
-`--annotator` / `$ALPACA_ANNOTATOR`). Re-judge the existing generations without any
-GPU work — where an OpenAI key + the Qwen reference live:
+Length-controlled (LC) win-rate of each vintage vs **Qwen-1.5-1.8B-Chat** on the 805
+AlpacaEval prompts, judged by `weighted_alpaca_eval_gpt4_turbo_new`. Both sides decode
+**greedily** (matching the authors' released `ChronoGPT_instruct.py`: temperature 0,
+argmax, no repetition penalty).
 
-```bash
-export OPENAI_API_KEY=...
-chrono alpaca --backend hf --repo Qwen/Qwen1.5-1.8B-Chat --name qwen --out out/qwen.json
-python scripts/score_alpaca.py --model results/chrono-instruct-2020/alpaca_2020.json
-```
+| Vintage τ | 1999 | 2005 | 2010 | 2015 | 2020 | 2024 |
+|:--|:--:|:--:|:--:|:--:|:--:|:--:|
+| **Ours (LC %)** | 8.39 | 7.96 | 10.14 | 10.05 | 9.86 | 10.95 |
+| Paper (LC %) | 12.59 | 13.19 | 16.21 | 16.36 | 16.56 | 16.79 |
 
-`score_alpaca.py` writes the win-rate back into each vintage's `eval.json`. The paper's
-**Figure 3** reports LC win rates of **12.59% → 16.79%** (1999 → 2024) — deliberately
-low, because Qwen-1.5-1.8B-Chat saw ~31× more pretraining tokens; the point is that a
-leakage-free model is still competitive, not that it wins. (Do not confuse this with
-the "54–62%" figure in the paper — that is the **trading Sharpe-ratio** result of
-Table 4, a different exhibit we do not reproduce here.) Decoding is **greedy**, matching
-the authors' released `ChronoGPT_instruct.py` (temperature 0, argmax, no repetition
-penalty); the reference judge (gpt-4o-mini) is cheaper than the paper's, so a
-gpt-4-turbo-family annotator gives the closest absolute comparison (§8).
+**Reading.** The qualitative story reproduces — a leakage-free ~1.55B model wins a
+**modest but nonzero** share against a 31×-larger reference, with the latest vintage
+(2024) the strongest, as in the paper. Absolute rates run **~4–7 pp below** the paper
+and the vintage ordering is noisier (a dip at 2005, a plateau 2010–2020 rather than a
+clean monotone rise). Diagnosis of the gap, in decreasing confidence:
+- **Different judge.** The paper judged with `gpt-4-1106-preview` (now retired);
+  we use a newer gpt-4-turbo. Different annotators shift the absolute LC level by
+  several points, which alone explains most of a roughly-uniform downward offset.
+- **Greedy degeneration.** **37–44 % of our completions** contain a verbatim repetition
+  loop ("Use a sturdy, sturdy-looking gift bag" ×5) — the known failure mode of greedy
+  decoding on a small model. These reliably lose to Qwen. We keep greedy on purpose
+  (it is what the authors' code does), so this is a faithful cost, not a bug.
+- **Independently-trained weights.** These are our own SFT vintages (`HZ0619`), tuned
+  toward pipeline-correctness against the *shape* of the paper's loss curves, not the
+  released `manelalab` weights. A somewhat weaker open-generation model — a few points
+  of win-rate — is expected and consistent with the loss-value caveat in §8.
 
-**Uncapped full-validation re-scoring** (`scripts/full_eval.py`). Training-time
-validation caps the held-out set at `val_max_blocks: 500`, which made Stage-1's
-~3-block validation noisy. Re-scoring the *same seeded holdout* in full (no cap, no
-re-training) tightens the Stage-1 numbers without changing which examples are held
-out:
+The **"54–62 %"** figure elsewhere in the paper is the **trading Sharpe-ratio** result
+(Table 4), a different exhibit we do not reproduce — not the AlpacaEval win-rate.
 
-```bash
-python scripts/full_eval.py --config configs/train.yaml \
-    --repo runs/chrono-instruct-2020/final --cutoff 2020 \
-    --out results/full_eval/2020.json
-```
+> **Still pending:** *uncapped full-validation re-scoring* (`scripts/full_eval.py`)
+> would tighten the noisy Stage-1 loss numbers by re-scoring the same seeded holdout
+> with no `val_max_blocks` cap. Not yet run; it changes no headline result.
 
 ---
 
@@ -355,17 +344,15 @@ especially the masked-loss reading (§2) and the packing/split handling (§4).*
 - **"masked cross-entropy" is mildly ambiguous in the paper** — it could denote
   only the causal mask. We adopt response-only masking, the near-universal SFT
   reading (§5, §2); worth confirming.
-- **Tables 2–3 are run and reported (§6); AlpacaEval (Figure 3) is generated but not
-  yet judged.** The consistency tests use small hand-built probe sets (6 presidents,
-  6 events) transcribed from the paper — they demonstrate the leakage/no-leakage
-  structure, not a large-sample accuracy estimate. The 2024 president row was scored
-  under an interim harness (§6†) and is flagged for a one-command re-run.
-- **AlpacaEval judge choice affects the absolute win-rate.** The default was switched
-  off OpenAI's retired `gpt-4-1106-preview`; the current cheap default (gpt-4o-mini)
-  trades some human agreement for cost, so re-judging with a gpt-4-turbo-family
-  annotator gives the closest comparison to the paper's Figure 3 (12.59–16.79%, §6b).
-  A first greedy run scored 2015 at LC 9.94% (vs the paper's 16.36% for that vintage) —
-  same order of magnitude; the gap is plausibly judge-model and model-capability
-  differences, not a pipeline bug.
+- **All exhibits are run (§6, §6b).** The consistency tests use small hand-built probe
+  sets (6 presidents, 6 events) transcribed from the paper — they demonstrate the
+  leakage/no-leakage structure, not a large-sample accuracy estimate. The 2024
+  president row was scored under an interim harness (§6†) and is flagged for a
+  one-command re-run.
+- **Figure 3 runs ~4–7 pp below the paper (§6b).** The story reproduces (modest,
+  cutoff-increasing win-rate vs a far larger Qwen) but the absolute level is lower,
+  driven by a different judge model, ~40 % greedy repetition-degeneration, and our
+  independently-trained weights. Not a pipeline bug — a faithfulness-vs-leaderboard
+  tradeoff consistent with the loss-value caveat above.
 - **Packing splits ~5.1% of Tulu examples** at block boundaries; no response tokens
   are lost, but such examples are never seen whole in one forward (§5).

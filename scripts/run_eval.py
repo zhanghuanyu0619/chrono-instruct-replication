@@ -21,7 +21,7 @@ Qwen rises 12.59% -> 16.79% across the 1999 -> 2024 vintages in the paper).
 Usage:
   python scripts/run_eval.py --vintage 2024
   python scripts/run_eval.py --vintage 2024 --repo runs/chrono-instruct-2024/final
-  python scripts/run_eval.py --vintage 2024 --alpaca --alpaca-reference out/qwen.json
+  python scripts/run_eval.py --vintage 2024 --alpaca --alpaca-reference results/qwen/qwen.json
 """
 import argparse
 import json
@@ -88,6 +88,8 @@ def main():
         fig3 = {"outputs": os.path.relpath(model_json, REPO_ROOT), "n": len(outs)}
         if args.alpaca_reference and os.path.exists(args.alpaca_reference):
             try:
+                from chrono_instruct.eval import DEFAULT_ALPACA_ANNOTATOR
+                fig3["annotator"] = os.environ.get("ALPACA_ANNOTATOR", DEFAULT_ALPACA_ANNOTATOR)
                 wr = alpaca_winrate(model_json, args.alpaca_reference)
                 fig3["lc_winrate"] = round(wr, 2)
                 print(f"[eval]   Figure 3 LC win-rate vs reference: {wr:.2f}%")
