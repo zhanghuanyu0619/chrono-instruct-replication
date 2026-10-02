@@ -21,9 +21,10 @@ Decisions:
   - `adapters_disabled` switches the adapters off in place for the duration of a forward.
     DistIL's fixed teacher (the paper's --fixed_teacher: LoRA disabled) is exactly that, so a
     self-distillation run needs no second copy of the model.
-  - `merged_state_dict` folds W + scale * B A in fp32 and stores it in the base weight's dtype,
-    without touching the model, so checkpoints can be written mid-run. A bf16 base weight makes
-    the merged model agree with the adapted one only to bf16 rounding (test_lora bounds it).
+  - `merged_state_dict` folds W + scale * B A in fp32 on the CPU and stores it in the base weight's
+    dtype, without touching the model or the GPU (a 16 GB card is full when a run ends), so
+    checkpoints can be written mid-run. A bf16 base weight makes the merged model agree with the
+    adapted one only to bf16 rounding (test_lora bounds it).
 """
 import contextlib
 import math
@@ -58,8 +59,8 @@ class LoRALinear(nn.Module):
         return y + F.linear(h, self.lora_B.type_as(x)) * self.scale
 
     def merged_weight(self):
-        w = self.base.weight
-        return (w.float() + (self.lora_B.float() @ self.lora_A.float()) * self.scale).to(w.dtype)
+        """W + scale * B A, computed on the CPU in fp32, returned in W's dtype (on the CPU)."""
+        return _merge(self.base.weight, self.lora_A, self.lora_B, self.scale)
 
 
 def _peft_layer_cls():
@@ -134,20 +135,31 @@ def adapters_disabled(model):
             _set_enabled(m, True)
 
 
+def _merge(w, a, b, scale):
+    cpu = lambda t: t.detach().cpu().float()   # noqa: E731
+    return (cpu(w) + (cpu(b) @ cpu(a)) * scale).to(w.dtype)
+
+
 def _merged_weight(module):
     if isinstance(module, LoRALinear):
         return module.merged_weight()
-    w = module.base_layer.weight
-    delta = sum(module.get_delta_weight(a) for a in module.active_adapters)
-    return (w.float() + delta.float()).to(w.dtype)
+    w = module.base_layer.weight                      # peft lora.Linear: sum the active adapters, as get_delta_weight does
+    out = w.detach().cpu().float()
+    for name in module.active_adapters:
+        out += (module.lora_B[name].weight.detach().cpu().float() @ module.lora_A[name].weight.detach().cpu().float()) \
+            * module.scaling[name]
+    return out.to(w.dtype)
 
 
 def merged_state_dict(model):
-    """The base model's state dict with the adapters folded into their weights; the model is left as is."""
+    """The base model's state dict with the adapters folded into their weights, on the CPU; the model is left as is.
+
+    Everything is computed on the CPU: a run on a 16 GB card finishes with the GPU full, and the
+    merge is written once, so it needs no device memory at all."""
     layers = dict(lora_layers(model))
-    sd = {k: v for k, v in model.state_dict().items() if not any(k.startswith(n + ".") for n in layers)}
+    sd = {k: v.detach().cpu() for k, v in model.state_dict().items() if not any(k.startswith(n + ".") for n in layers)}
     for name, m in layers.items():
-        sd[name + ".weight"] = _merged_weight(m).detach()
+        sd[name + ".weight"] = _merged_weight(m)
     return sd
 
 

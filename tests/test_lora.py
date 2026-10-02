@@ -60,6 +60,7 @@ def test_lora_round_trip(tmp_path, backend):
 
     sd = merged_state_dict(model)
     assert set(sd) == set(tiny().state_dict()) and all(p.requires_grad for p in params)
+    assert all(v.device.type == "cpu" for v in sd.values())
     save_merged(model, tmp_path / "final")
     plain = ChronoGPT.from_pretrained(str(tmp_path / "final"))
     assert not lora_layers(plain) and all(p.dtype == torch.float32 for p in plain.parameters())
