@@ -220,6 +220,18 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
         logits = 15 * torch.tanh(logits / 15)  # logit softcap
         return logits.float(), (new_past if use_cache else layer_outputs)
 
+    def trim_rotary(self, max_seq_len):
+        """Shrink the rotary cos/sin tables to `max_seq_len` positions.
+
+        Rotary builds them for 65,536 positions: 1.7 GB per 1.5B model (52 blocks), most of it
+        never read by a training run capped at a few hundred tokens. Positions past the new
+        table raise a shape error in Rotary.forward, so pass the run's true maximum. Lossless.
+        """
+        for blk in self.blocks:
+            r = blk.attn.rotary
+            r.cos, r.sin = r.cos[:max_seq_len].clone(), r.sin[:max_seq_len].clone()
+        return self
+
     def save_pretrained(self, save_directory, state_dict=None, **kwargs):
         """Weights + config to a directory. `state_dict` substitutes the weights (lora.save_merged)."""
         os.makedirs(save_directory, exist_ok=True)

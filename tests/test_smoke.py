@@ -81,3 +81,17 @@ def test_kv_cache_matches_full_forward():
     assert cached.shape == full.shape
     assert torch.equal(full.argmax(-1), cached.argmax(-1))     # identical greedy choices
     assert torch.allclose(full, cached, atol=1e-2)             # logits match (bf16 internals)
+
+
+def test_trim_rotary_is_lossless_within_range():
+    torch.manual_seed(0)
+    model = build_tiny(vocab_size=512).eval()
+    ids = torch.randint(0, 512, (1, 12))
+    with torch.no_grad():
+        full = model(ids, return_hidden=False)[0]
+        model.trim_rotary(16)
+        assert model.blocks[0].attn.rotary.cos.shape[0] == 16
+        assert torch.equal(model(ids, return_hidden=False)[0], full)
+        import pytest
+        with pytest.raises(RuntimeError):
+            model(torch.randint(0, 512, (1, 20)), return_hidden=False)
