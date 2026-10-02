@@ -220,9 +220,11 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
         logits = 15 * torch.tanh(logits / 15)  # logit softcap
         return logits.float(), (new_past if use_cache else layer_outputs)
 
-    def save_pretrained(self, save_directory, **kwargs):
+    def save_pretrained(self, save_directory, state_dict=None, **kwargs):
+        """Weights + config to a directory. `state_dict` substitutes the weights (lora.save_merged)."""
         os.makedirs(save_directory, exist_ok=True)
-        torch.save(self.state_dict(), os.path.join(save_directory, "pytorch_model.bin"))
+        torch.save(self.state_dict() if state_dict is None else state_dict,
+                   os.path.join(save_directory, "pytorch_model.bin"))
         config = {
             "model_type": "ChronoGPT",
             "vocab_size": self.embed.num_embeddings,
