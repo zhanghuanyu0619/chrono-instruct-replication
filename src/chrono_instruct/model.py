@@ -170,7 +170,9 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
         ([None] * num_layers on the first call), to reuse cached keys/values
         instead of recomputing the whole prefix each step (O(T) vs O(T^2)). When
         `past` is given the SECOND return value is the updated cache list, not
-        layer_outputs. Never combine with training / grad_checkpoint. See
+        layer_outputs; the list passed in is consumed (its entries are set to
+        None as each block's new cache is built, so a decode step holds one
+        cache, not two). Never combine with training / grad_checkpoint. See
         infer.generate. This is numerically equivalent to past=None.
         """
         if inputs.dim() == 1:
@@ -198,6 +200,7 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
         for i in range(self.num_encoder_layers):
             if use_cache:
                 x, kv = self.blocks[i](x, ve_enc[i], x0, past[i], True)
+                past[i] = None  # release this block's old cache now: otherwise the whole cache exists twice per step
                 new_past.append(kv)
             else:
                 x = run_block(self.blocks[i], x, ve_enc[i], x0)
@@ -209,6 +212,7 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
             j = self.num_encoder_layers + i
             if use_cache:
                 x, kv = self.blocks[j](x, ve_dec[i], x0, past[j], True)
+                past[j] = None
                 new_past.append(kv)
             else:
                 x = run_block(self.blocks[j], x, ve_dec[i], x0)
