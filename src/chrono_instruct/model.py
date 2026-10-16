@@ -11,6 +11,14 @@ Changes from the original:
      default, so the training path is untouched). `infer.generate` uses it to
      decode one token at a time instead of recomputing the whole sequence; with
      past=None the forward is identical to the original full-sequence pass.
+  3. Optional LEFT PADDING (`pad_lens`, one count per row): rows of different
+     prompt lengths can share one batch. Rotary angles are then taken per row
+     from the first real token, and the padded positions are masked out as
+     keys. Without `pad_lens` every op is the one the original runs, so the
+     default path is unchanged; with it, each row's logits at its real positions
+     equal that row's logits run alone (up to float rounding). This is what lets
+     a sampler decode many prompts' rollouts in one batch (chrono-distil,
+     chrono-bpm-distil) instead of one prompt at a time.
 
 Architecture (modded-nanoGPT U-net: 26 encoder + 26 decoder layers with skip
 connections, value embeddings, RMSNorm, rotary, ReLU^2 MLP, logit softcap) is
@@ -48,11 +56,16 @@ class Rotary(nn.Module):
         self.register_buffer("cos", theta.cos(), persistent=False)
         self.register_buffer("sin", theta.sin(), persistent=False)
 
-    def forward(self, x, offset=0):
+    def forward(self, x, offset=0, positions=None):
         # offset = number of already-cached positions, so the new tokens get their
         # ABSOLUTE rotary angles during incremental (KV-cached) decoding.
+        # positions [B, L] (left-padded batches): each row's own absolute positions,
+        # counted from its first real token; overrides offset.
         L = x.size(-3)
-        cos, sin = self.cos[None, offset : offset + L, None, :], self.sin[None, offset : offset + L, None, :]
+        if positions is None:
+            cos, sin = self.cos[None, offset : offset + L, None, :], self.sin[None, offset : offset + L, None, :]
+        else:
+            cos, sin = self.cos[positions].unsqueeze(2), self.sin[positions].unsqueeze(2)
         x1, x2 = x.float().chunk(2, dim=-1)
         y1 = x1 * cos + x2 * sin
         y2 = x1 * (-sin) + x2 * cos
@@ -72,7 +85,7 @@ class CausalSelfAttention(nn.Module):
         self.rotary = Rotary(self.head_dim)
         self.c_proj = CastedLinear(dim, dim)
 
-    def forward(self, x, ve, past=None, use_cache=False):
+    def forward(self, x, ve, past=None, use_cache=False, pad_lens=None):
         B, T = x.size(0), x.size(1)
         q = self.c_q(x).view(B, T, self.num_heads, self.head_dim)
         k = self.c_k(x).view(B, T, self.num_heads, self.head_dim)
@@ -83,16 +96,35 @@ class CausalSelfAttention(nn.Module):
             v = self.lambdas[0] * v
         q, k = norm(q), norm(k)
         past_len = past[0].size(1) if past is not None else 0   # cached positions along T
-        q, k = self.rotary(q, past_len), self.rotary(k, past_len)
+        if pad_lens is None:
+            q, k = self.rotary(q, past_len), self.rotary(k, past_len)
+        else:
+            # row b's real tokens start at index pad_lens[b] of the (padded) sequence, so its
+            # token at global index g sits at rotary position g - pad_lens[b] (clamped for the
+            # pads themselves, whose outputs are never read)
+            pos = (past_len + torch.arange(T, device=x.device)[None, :] - pad_lens[:, None]).clamp(min=0)
+            q, k = self.rotary(q, positions=pos), self.rotary(k, positions=pos)
         if past is not None:                                    # prepend cached keys/values
             k = torch.cat([past[0], k], dim=1)
             v = torch.cat([past[1], v], dim=1)
         new_cache = (k, v) if use_cache else None
-        # Prefill (no past) needs the causal mask; a single-token decode step has one
-        # query that should attend to ALL cached positions, so no mask is needed there.
-        y = F.scaled_dot_product_attention(
-            q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2), is_causal=(past_len == 0)
-        )
+        if pad_lens is None:
+            # Prefill (no past) needs the causal mask; a single-token decode step has one
+            # query that should attend to ALL cached positions, so no mask is needed there.
+            y = F.scaled_dot_product_attention(
+                q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2), is_causal=(past_len == 0)
+            )
+        else:
+            # causal, and no key inside a row's left padding. A pad query (all its keys
+            # padded) keeps itself, so its softmax row is finite and no NaN can leak through
+            # the masked (weight 0) value products into the real rows.
+            qi = past_len + torch.arange(T, device=x.device)
+            ki = torch.arange(past_len + T, device=x.device)
+            allowed = (ki[None, None, :] <= qi[None, :, None]) & (
+                (ki[None, None, :] >= pad_lens[:, None, None]) | (ki[None, None, :] == qi[None, :, None]))
+            y = F.scaled_dot_product_attention(
+                q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2), attn_mask=allowed[:, None]
+            )
         y = y.transpose(1, 2).contiguous().view(B, T, -1)
         return self.c_proj(y), new_cache
 
@@ -117,11 +149,11 @@ class Block(nn.Module):
         self.mlp = MLP(model_dim)
         self.lambdas = nn.Parameter(torch.tensor([1.0, 0.0]))
 
-    def forward(self, x, ve, x0, past=None, use_cache=False):
+    def forward(self, x, ve, x0, past=None, use_cache=False, pad_lens=None):
         x = self.lambdas[0] * x + self.lambdas[1] * x0
         new_cache = None
         if self.attn is not None:
-            a, new_cache = self.attn(norm(x), ve, past, use_cache)
+            a, new_cache = self.attn(norm(x), ve, past, use_cache, pad_lens)
             x = x + a
         x = x + self.mlp(norm(x))
         # Plain tensor on the training path (so torch.utils.checkpoint stays simple);
@@ -158,7 +190,7 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
         self.skip_weights = nn.Parameter(torch.ones(self.num_decoder_layers))
         self.grad_checkpoint = False  # set True (training only) to recompute blocks in backward
 
-    def forward(self, inputs, return_hidden=True, past=None):
+    def forward(self, inputs, return_hidden=True, past=None, pad_lens=None):
         """Returns (logits[B,T,V] float, layer_outputs).
 
         layer_outputs is the per-layer hidden-state list used by `embed`. Pass
@@ -174,6 +206,13 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
         None as each block's new cache is built, so a decode step holds one
         cache, not two). Never combine with training / grad_checkpoint. See
         infer.generate. This is numerically equivalent to past=None.
+
+        pad_lens (optional, [B] long): the batch is LEFT-padded and row b's first
+        pad_lens[b] positions are padding (any token id). Rotary positions then count
+        from each row's first real token and padded positions are masked out as keys,
+        so a row's logits at its real positions match the same row run alone. With a
+        `past`, pad_lens counts the padding at the front of the cache (the same tensor
+        on every step). Padded positions' logits are meaningless; ignore them.
         """
         if inputs.dim() == 1:
             inputs = inputs.unsqueeze(0)
@@ -193,13 +232,15 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
         ckpt = self.grad_checkpoint and self.training
 
         def run_block(blk, *args):
+            if pad_lens is not None:
+                args = (*args, None, False, pad_lens)
             return checkpoint(blk, *args, use_reentrant=False) if ckpt else blk(*args)
 
         layer_outputs = []
         skip_connections = []
         for i in range(self.num_encoder_layers):
             if use_cache:
-                x, kv = self.blocks[i](x, ve_enc[i], x0, past[i], True)
+                x, kv = self.blocks[i](x, ve_enc[i], x0, past[i], True, pad_lens)
                 past[i] = None  # release this block's old cache now: otherwise the whole cache exists twice per step
                 new_past.append(kv)
             else:
@@ -211,7 +252,7 @@ class ChronoGPT(nn.Module, PyTorchModelHubMixin):
             x = x + self.skip_weights[i] * skip_connections.pop()
             j = self.num_encoder_layers + i
             if use_cache:
-                x, kv = self.blocks[j](x, ve_dec[i], x0, past[j], True)
+                x, kv = self.blocks[j](x, ve_dec[i], x0, past[j], True, pad_lens)
                 past[j] = None
                 new_past.append(kv)
             else:

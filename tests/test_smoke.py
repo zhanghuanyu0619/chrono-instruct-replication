@@ -95,3 +95,40 @@ def test_trim_rotary_is_lossless_within_range():
         import pytest
         with pytest.raises(RuntimeError):
             model(torch.randint(0, 512, (1, 20)), return_hidden=False)
+
+
+def test_left_padding_matches_rows_run_alone():
+    """`pad_lens`: a left-padded batch of different-length rows gives each row the logits it gets alone,
+    in prefill and through KV-cached decoding, and the padding path is bit-identical to the default
+    when no row is padded (so the default path is untouched)."""
+    torch.manual_seed(0)
+    vocab = 512
+    model = build_tiny(vocab_size=vocab).eval()
+    lens = [5, 9, 3]
+    rows = [torch.randint(0, vocab, (n,)) for n in lens]
+    L = max(lens)
+    pad_lens = torch.tensor([L - n for n in lens])
+    batch = torch.stack([torch.cat([torch.zeros(L - n, dtype=torch.long), r]) for n, r in zip(lens, rows)])
+    nxt = torch.randint(0, vocab, (len(lens), 3))              # three decode steps after the prompts
+
+    with torch.no_grad():
+        # prefill
+        padded, _ = model(batch, return_hidden=False, pad_lens=pad_lens)
+        for b, (n, r) in enumerate(zip(lens, rows)):
+            alone, _ = model(r[None], return_hidden=False)
+            assert torch.allclose(padded[b, L - n :], alone[0], atol=1e-2), f"row {b} prefill"
+        # cached decoding: the same pad_lens on every step
+        past = [None] * len(model.blocks)
+        _, past = model(batch, return_hidden=False, past=past, pad_lens=pad_lens)
+        steps = []
+        for t in range(nxt.size(1)):
+            lg, past = model(nxt[:, t : t + 1], return_hidden=False, past=past, pad_lens=pad_lens)
+            steps.append(lg[:, -1])
+        for b, (n, r) in enumerate(zip(lens, rows)):
+            full, _ = model(torch.cat([r, nxt[b]])[None], return_hidden=False)
+            for t in range(nxt.size(1)):
+                assert torch.allclose(steps[t][b], full[0, n + t], atol=1e-2), f"row {b} decode step {t}"
+        # no padding: the two code paths agree exactly
+        ids = torch.randint(0, vocab, (2, 7))
+        assert torch.equal(model(ids, return_hidden=False)[0],
+                           model(ids, return_hidden=False, pad_lens=torch.zeros(2, dtype=torch.long))[0])
